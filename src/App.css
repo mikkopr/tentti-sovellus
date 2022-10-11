@@ -1,38 +1,25 @@
 .App {
-  text-align: center;
+  text-align: left;
+  background-color: azure;
+  padding: 1em;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.kysymys-lista {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  /*width: fit-content;*/
+  width: 600px;
+  background-color: white;
 }
 
-.App-link {
-  color: #61dafb;
+.kysymys {
+  padding: 0.5em;
+  border-style: inset;
+  border-color: aliceblue;
+  border-width: 0.1em;
+  border-radius: 0.3em;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.kysymys-teksti {
+  font-weight: bold;
 }

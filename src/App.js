@@ -1,25 +1,29 @@
-import logo from './logo.svg';
+
 import './App.css';
 
-function App() {
+import Tentti from './Tentti';
+
+const App = () => {
+  let kysymys1 = {kysymys: "Ensimmäinen kysymys?", vastaukset: ["vastaus1","vastaus2"]};
+  let kysymys2 = {kysymys: "Toinen kysymys?", vastaukset: ["vastaus1","vastaus2"]};
+
+  let tentti1 = {
+    nimi: "Haskell perusteet",
+    kysymykset: [kysymys1, kysymys2]
+  };
+
+  let tentti2 = {
+    nimi: "Javascript perusteet",
+    kysymykset: [kysymys1, kysymys2]
+  };
+
+  let tentit = [tentti1];
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className='App'>
+      {tentit.map( tentti => <Tentti nimi={tentti.nimi} kysymykset={tentti.kysymykset}/> )}
     </div>
-  );
-}
+    );
+};
 
 export default App;
