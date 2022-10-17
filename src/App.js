@@ -1,27 +1,28 @@
 
 import './App.css';
 
-import Tentti from './Tentti';
+import Exam from './Exam';
 
 const App = () => {
-  let kysymys1 = {kysymys: "Ensimmäinen kysymys?", vastaukset: ["vastaus1","vastaus2"]};
-  let kysymys2 = {kysymys: "Toinen kysymys?", vastaukset: ["vastaus1","vastaus2"]};
 
-  let tentti1 = {
-    nimi: "Haskell perusteet",
-    kysymykset: [kysymys1, kysymys2]
+  let question1 = {question: "Ensimmäinen kysymys?", correctAnswerIndex: 0, answers: ["vastaus1","vastaus2"]};
+  let question2 = {question: "Toinen kysymys?", correctAnswerIndex: 0, answers: ["vastaus1","vastaus2"]};
+
+  let exam1 = {
+    name: "Haskell perusteet",
+    questions: [question1, question2]
   };
 
-  let tentti2 = {
-    nimi: "Javascript perusteet",
-    kysymykset: [kysymys1, kysymys2]
+  let exam2 = {
+    name: "Javascript perusteet",
+    questions: [question1, question2]
   };
 
-  let tentit = [tentti1];
+  let exams = [exam1, exam2];
 
   return (
     <div className='App'>
-      {tentit.map( tentti => <Tentti nimi={tentti.nimi} kysymykset={tentti.kysymykset}/> )}
+      {<Exam exam={exams[0]}/>}
     </div>
     );
 };
