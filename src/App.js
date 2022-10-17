@@ -5,8 +5,18 @@ import Exam from './Exam';
 
 const App = () => {
 
-  let question1 = {question: "Ensimmäinen kysymys?", correctAnswerIndex: 0, answers: ["vastaus1","vastaus2"]};
-  let question2 = {question: "Toinen kysymys?", correctAnswerIndex: 0, answers: ["vastaus1","vastaus2"]};
+  const answers1 = [
+    {answer: "Vastaus_1_1", selected: false},
+    {answer: "Vastaus_1_2", selected: false}
+    ];
+
+  const answers2 = [
+    {answer: "Vastaus_2_1", selected: false},
+    {answer: "Vastaus_2_2", selected: false}
+    ];
+
+  let question1 = {question: "Ensimmäinen kysymys?", answers: answers1};
+  let question2 = {question: "Toinen kysymys?", answers: answers2};
 
   let exam1 = {
     name: "Haskell perusteet",
