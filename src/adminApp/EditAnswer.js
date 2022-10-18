@@ -1,9 +1,9 @@
 
-import './AdminApp.css';
+import '../App.css';
 
 const EditAnswer = (props) => {
     return (
-    <div>
+    <div className='edit-answer'>
         <div>
             <input type='checkbox' 
                 //value={props.answer.number}

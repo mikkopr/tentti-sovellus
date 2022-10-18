@@ -1,25 +1,54 @@
 .App {
-  text-align: left;
+  /*text-align: left;*/
   background-color: azure;
   padding: 1em;
+}
+
+.exam {
+  display: flex;
+  flex-direction: column;
+  align-content: center;
+  width: 70%;
+  border-style: solid;
+  border-color: red;
+  border: 1px;
 }
 
 .kysymys-lista {
   display: flex;
   flex-direction: column;
-  /*width: fit-content;*/
-  width: 600px;
-  background-color: white;
+  align-items: center;
 }
 
 .kysymys {
+  width: 600px;
   padding: 0.5em;
   border-style: inset;
   border-color: aliceblue;
   border-width: 0.1em;
   border-radius: 0.3em;
+  background-color: white;
 }
 
 .kysymys-teksti {
   font-weight: bold;
+}
+
+.edit-answer {
+  display: flex;
+  flex-direction: row;
+  padding: 0.5em;
+}
+
+.button-row {
+  display: flex;
+  flex-direction: column;
+  align-content: center;
+  /*justify-content: space-around;*/
+}
+
+.add-button {
+  color: blue;
+  background-color: aqua;
+  width: min-content;
 }

@@ -4,7 +4,7 @@ import EditQuestion from './EditQuestion';
 
 const EditExam = (props) => {
     return (
-        <div>
+        <div className='exam'>
             <h3>{props.exam.name}</h3>
             <div className='kysymys-lista'>
                 {props.exam.questions.map( (question, index) => {
