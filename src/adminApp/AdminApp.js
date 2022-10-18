@@ -1,12 +1,8 @@
-import { useReducer } from 'react';
 
 import '../App.css';
 
 import EditExam from './EditExam';
 import ExamMenu from '../ExamMenu';
-
-const answerStub = {answer: 'Vastaus', isCorrect: false};
-const questionStub = {question: 'Kysymys?', answers: [{...answerStub}]}
 
 const answers1 = [
   {answer: "Vastaus_1_1", isCorrect: true},
@@ -35,40 +31,11 @@ let exams = [exam1, exam2];
 
 const AdminApp = () => 
 {
-  const [exam, dispatch] = useReducer(reducer, exams[0]);
-
-  function reducer(state, action)
-  {
-    const stateCopy = {...state};
-    
-    switch (action.type) {
-      case 'ANSWER_VALUE_CHANGED':
-        stateCopy.questions[action.payload.questionIndex].answers[action.payload.answerIndex].answer =
-          action.payload.value;
-        return stateCopy;
-      case 'ANSWER_CHECKED_STATE_CHANGED':
-        stateCopy.questions[action.payload.questionIndex].answers[action.payload.answerIndex].isCorrect =
-          action.payload.value;
-        return stateCopy;
-      case 'ADD_ANSWER_CLICKED':
-        //return {...state}.questions[action.payload.questionIndex].answers.push({...answerStub});
-        stateCopy.questions[action.payload.questionIndex].answers.push({...answerStub});
-        return stateCopy;
-      case 'ADD_QUESTION_CLICKED':
-        stateCopy.questions.push({...questionStub});
-        return stateCopy;
-      case 'QUESTION_VALUE_CHANGED':
-        stateCopy.questions[action.payload.questionIndex].question = action.payload.value;
-        return stateCopy;
-      default:
-        throw Error('Unknown event: ' + action.type);
-    }
-  }
-
+  
   return (
     <div className='App'>
       {<ExamMenu exams={exams}/>}
-      {<EditExam exam={exam} dispatch={dispatch}/>}
+      {<EditExam exam={exams[0]} />}
     </div>
     )
 }
