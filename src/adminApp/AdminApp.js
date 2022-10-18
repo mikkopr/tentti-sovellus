@@ -45,6 +45,10 @@ const AdminApp = () =>
         stateCopy.questions[action.payload.questionIndex].answers[action.payload.answerIndex].answer =
           action.payload.value;
         return stateCopy;
+      case 'ANSWER_CHECKED_STATE_CHANGED':
+        stateCopy.questions[action.payload.questionIndex].answers[action.payload.answerIndex].isCorrect =
+          action.payload.value;
+        return stateCopy;
       case 'ADD_ANSWER_CLICKED':
         //return {...state}.questions[action.payload.questionIndex].answers.push({...answerStub});
         stateCopy.questions[action.payload.questionIndex].answers.push({...answerStub});
