@@ -8,7 +8,8 @@ const Exam = (props) => {
             <h3>{props.exam.name}</h3>
             <div className='kysymys-lista'>
                 {props.exam.questions.map( (question, index) =>
-                    <Question 
+                    <Question
+                        key={index}
                         question={question}
                         questionIndex={index}
                         onAnswerChanged={props.onAnswerChanged} /> )}
