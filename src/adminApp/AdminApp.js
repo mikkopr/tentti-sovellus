@@ -3,6 +3,7 @@ import { useReducer } from 'react';
 import '../App.css';
 
 import EditExam from './EditExam';
+import ExamMenu from '../ExamMenu';
 
 const answerStub = {answer: 'Vastaus', isCorrect: false};
 const questionStub = {question: 'Kysymys?', answers: [{...answerStub}]}
@@ -66,6 +67,7 @@ const AdminApp = () =>
 
   return (
     <div className='App'>
+      {<ExamMenu exams={exams}/>}
       {<EditExam exam={exam} dispatch={dispatch}/>}
     </div>
     )
