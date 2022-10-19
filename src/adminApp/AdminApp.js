@@ -5,6 +5,7 @@ import '../App.css';
 
 import EditExam from './EditExam';
 import ExamMenu from '../ExamMenu';
+import { act } from 'react-dom/test-utils';
 
 const answerStub = {answer: 'Vastaus', isCorrect: false};
 const questionStub = {question: 'Kysymys?', answers: [{...answerStub}]}
@@ -33,24 +34,43 @@ let exam2 = {
 };
 
 //let exams = [exam1, exam2];
-const examsData = 
+const examsDataStub = 
 {
   exams: [exam1, exam2],
   selectedExam: 0,
-  isSaveRequired: false
+  isSaveRequired: false,
+  isDataInitialized: false
 };
+
+const STORAGE_KEY = 'examsData';
 
 const AdminApp = () => 
 {
-  const [examsData, dispatch] = useReducer(reducer, examsData);
+  const [examsState, dispatch] = useReducer(reducer, examsDataStub);
 
   useEffect( () =>
   {
-    const examData = localStorage.getItem('examData');
-    if (examData == null) {
-      
+    const examsData = localStorage.getItem(STORAGE_KEY);
+    //TODO: verify the data
+    if (examsData == null) {
+      console.log('No exams data in storage, uses an initial object for data');
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(examsDataStub));
+      dispatch({type: 'INITIALIZE_DATA', payload: examsData});
+    }
+    else {
+      console.log('Uses exams data in storage');
+      dispatch({type: 'INITIALIZE_DATA', payload: JSON.parse(examsData)});
     }
   }, []);
+
+  // Saves state object to storage when examsState.isSaveRequired == true
+  useEffect( () =>
+  {
+    if (examsState.isSaveRequired) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(examsState));
+      dispatch({type: 'SAVE_REQUIRED_VALUE_CHANGED', payload: false});
+    }
+  }, [examsState.isSaveRequired]);
 
   function reducer(state, action)
   {
@@ -58,11 +78,11 @@ const AdminApp = () =>
     
     switch (action.type) {
       case 'ANSWER_VALUE_CHANGED':
-        stateCopy.questions[action.payload.questionIndex].answers[action.payload.answerIndex].answer =
+        stateCopy.exams[state.selectedExam].questions[action.payload.questionIndex].answers[action.payload.answerIndex].answer =
           action.payload.value;
         return stateCopy;
       case 'ANSWER_CHECKED_STATE_CHANGED':
-        stateCopy.questions[action.payload.questionIndex].answers[action.payload.answerIndex].isCorrect =
+        stateCopy.exams[state.selectedExam].questions[action.payload.questionIndex].answers[action.payload.answerIndex].isCorrect =
           action.payload.value;
         return stateCopy;
       case 'ADD_ANSWER_CLICKED':
@@ -77,15 +97,22 @@ const AdminApp = () =>
         return stateCopy;*/
         //TODO: make a deep copy manually without JSON
         stateCopy = JSON.parse(JSON.stringify(state));
-        stateCopy.questions[action.payload.questionIndex].answers.push({...answerStub});
+        stateCopy.exams[state.selectedExam].questions[action.payload.questionIndex].answers.push({...answerStub});
         return stateCopy;
       case 'ADD_QUESTION_CLICKED':
-        stateCopy.questions = stateCopy.questions.slice();
-        stateCopy.questions.push({...questionStub});
+        stateCopy.exams[state.selectedExam].questions = stateCopy.questions.slice();
+        stateCopy.exams[state.selectedExam].questions.push({...questionStub});
         return stateCopy;
       case 'QUESTION_VALUE_CHANGED':
-        stateCopy.questions[action.payload.questionIndex].question = action.payload.value;
+        stateCopy.exams[state.selectedExam].questions[action.payload.questionIndex].question = action.payload.value;
         return stateCopy;
+      case 'INITIALIZE_DATA':
+        const copyOfState = JSON.parse(JSON.stringify(action.payload));
+        //Note: isDataInitialized not used anywhere yet
+        copyOfState.isDataInitialized = true;
+        return copyOfState;
+      case 'SAVE_REQUIRED_VALUE_CHANGED':
+        return {...state, isSaveRequired: action.payload};
       default:
         throw Error('Unknown event: ' + action.type);
     }
@@ -93,8 +120,8 @@ const AdminApp = () =>
 
   return (
     <div className='App'>
-      {<ExamMenu exams={exams} dispatch={dispatch}/>}
-      {<EditExam exam={exam} dispatch={dispatch}/>}
+      {<ExamMenu exams={examsState.exams} dispatch={dispatch}/>}
+      {<EditExam exam={examsState.exams[examsState.selectedExam]} dispatch={dispatch}/>}
     </div>
     )
 }
