@@ -1,5 +1,5 @@
 
-import { useReducer } from 'react';
+import { useEffect, useReducer } from 'react';
 
 import '../App.css';
 
@@ -32,11 +32,25 @@ let exam2 = {
   questions: [question1, question2]
 };
 
-let exams = [exam1, exam2];
+//let exams = [exam1, exam2];
+const examsData = 
+{
+  exams: [exam1, exam2],
+  selectedExam: 0,
+  isSaveRequired: false
+};
 
 const AdminApp = () => 
 {
-  const [exam, dispatch] = useReducer(reducer, exams[0]);
+  const [examsData, dispatch] = useReducer(reducer, examsData);
+
+  useEffect( () =>
+  {
+    const examData = localStorage.getItem('examData');
+    if (examData == null) {
+      
+    }
+  }, []);
 
   function reducer(state, action)
   {
