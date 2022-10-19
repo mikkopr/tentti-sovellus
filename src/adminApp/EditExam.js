@@ -12,7 +12,7 @@ const EditExam = (props) =>
 
     function reducer(state, action)
     {
-      const stateCopy = {...state};
+      let stateCopy = {...state};
       
       switch (action.type) {
         case 'ANSWER_VALUE_CHANGED':
@@ -24,10 +24,21 @@ const EditExam = (props) =>
             action.payload.value;
           return stateCopy;
         case 'ADD_ANSWER_CLICKED':
-          //return {...state}.questions[action.payload.questionIndex].answers.push({...answerStub});
+          //const answersCopy = stateCopy.question[action.payload.questionIndex].answers.map( answer =>
+          //console.log("add answer");
+          //stateCopy.questions[action.payload.questionIndex].answers.push({...answerStub});
+          //Shallow copy doesn't work properly, adds two answers:
+          /*stateCopy.questions = stateCopy.questions.slice();
+          stateCopy.questions[action.payload.questionIndex].answers = 
+            stateCopy.questions[action.payload.questionIndex].answers.slice();
+          stateCopy.questions[action.payload.questionIndex].answers.push({...answerStub});
+          return stateCopy;*/
+          //TODO: make a deep copy manually without JSON
+          stateCopy = JSON.parse(JSON.stringify(state));
           stateCopy.questions[action.payload.questionIndex].answers.push({...answerStub});
           return stateCopy;
         case 'ADD_QUESTION_CLICKED':
+          stateCopy.questions = stateCopy.questions.slice();
           stateCopy.questions.push({...questionStub});
           return stateCopy;
         case 'QUESTION_VALUE_CHANGED':
@@ -40,9 +51,9 @@ const EditExam = (props) =>
     
     return (
         <div className='exam'>
-            <h3>{props.exam.name}</h3>
+            <h3>{exam.name}</h3>
             <div className='kysymys-lista'>
-                {props.exam.questions.map( (question, index) => {
+                {exam.questions.map( (question, index) => {
                     return (<EditQuestion 
                         key={index}
                         question={question}

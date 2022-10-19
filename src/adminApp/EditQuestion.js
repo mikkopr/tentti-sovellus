@@ -30,7 +30,7 @@ const EditQuestion = (props) => {
             <input type='button' className='add-button' value='+'
                 onClick={event => props.dispatch( 
                     {type: 'ADD_ANSWER_CLICKED',
-                    payload: {questionIndex: props.questionIndex, answerIndex: props.answerIndex}} 
+                    payload: {questionIndex: props.questionIndex}} 
                 )}
             />
         </div>
