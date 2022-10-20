@@ -5,7 +5,6 @@ import '../App.css';
 
 import EditExam from './EditExam';
 import ExamMenu from '../ExamMenu';
-import { act } from 'react-dom/test-utils';
 
 const answerStub = {answer: 'Vastaus', isCorrect: false};
 const questionStub = {question: 'Kysymys?', answers: [{...answerStub}]}
@@ -55,7 +54,7 @@ const AdminApp = () =>
     if (examsData == null) {
       console.log('No exams data in storage, uses an initial object for data');
       localStorage.setItem(STORAGE_KEY, JSON.stringify(examsDataStub));
-      dispatch({type: 'INITIALIZE_DATA', payload: examsData});
+      dispatch({type: 'INITIALIZE_DATA', payload: examsDataStub});
     }
     else {
       console.log('Uses exams data in storage');
@@ -80,31 +79,43 @@ const AdminApp = () =>
       case 'ANSWER_VALUE_CHANGED':
         stateCopy.exams[state.selectedExam].questions[action.payload.questionIndex].answers[action.payload.answerIndex].answer =
           action.payload.value;
+        stateCopy.isSaveRequired = true;
         return stateCopy;
       case 'ANSWER_CHECKED_STATE_CHANGED':
         stateCopy.exams[state.selectedExam].questions[action.payload.questionIndex].answers[action.payload.answerIndex].isCorrect =
           action.payload.value;
+          stateCopy.isSaveRequired = true;
         return stateCopy;
       case 'ADD_ANSWER_CLICKED':
-        //const answersCopy = stateCopy.question[action.payload.questionIndex].answers.map( answer =>
-        //console.log("add answer");
-        //stateCopy.questions[action.payload.questionIndex].answers.push({...answerStub});
-        //Shallow copy doesn't work properly, adds two answers:
-        /*stateCopy.questions = stateCopy.questions.slice();
-        stateCopy.questions[action.payload.questionIndex].answers = 
-          stateCopy.questions[action.payload.questionIndex].answers.slice();
-        stateCopy.questions[action.payload.questionIndex].answers.push({...answerStub});
-        return stateCopy;*/
-        //TODO: make a deep copy manually without JSON
-        stateCopy = JSON.parse(JSON.stringify(state));
-        stateCopy.exams[state.selectedExam].questions[action.payload.questionIndex].answers.push({...answerStub});
+        console.log("add answer");
+        //Shallow copy doesn't work properly, adds two answers
+        const questionIndex = action.payload.questionIndex;
+        //Make a deep copy of the modified question object
+        let questionCopy = JSON.parse(JSON.stringify(
+          state.exams[state.selectedExam].questions[questionIndex]));
+        questionCopy.answers.push({...answerStub});
+        //Make copies of arrays
+        stateCopy.exams = state.exams.slice();
+        stateCopy.exams[state.selectedExam].questions = state.exams[state.selectedExam].questions.slice();
+        //Replace a question object with the copied one
+        stateCopy.exams[state.selectedExam].questions[questionIndex] = questionCopy;
+        stateCopy.isSaveRequired = true;
         return stateCopy;
+        
+        /*stateCopy = JSON.parse(JSON.stringify(state));
+        stateCopy.exams[state.selectedExam].questions[action.payload.questionIndex].answers.push({...answerStub});
+        stateCopy.isSaveRequired = true;
+        return stateCopy;*/
       case 'ADD_QUESTION_CLICKED':
-        stateCopy.exams[state.selectedExam].questions = stateCopy.questions.slice();
+        /*stateCopy.exams[state.selectedExam].questions = stateCopy.exams[state.selectedExam].questions.slice();
+        stateCopy.exams[state.selectedExam].questions.push({...questionStub});*/
+        stateCopy = JSON.parse(JSON.stringify(state));
         stateCopy.exams[state.selectedExam].questions.push({...questionStub});
+        stateCopy.isSaveRequired = true;
         return stateCopy;
       case 'QUESTION_VALUE_CHANGED':
         stateCopy.exams[state.selectedExam].questions[action.payload.questionIndex].question = action.payload.value;
+        stateCopy.isSaveRequired = true;
         return stateCopy;
       case 'INITIALIZE_DATA':
         const copyOfState = JSON.parse(JSON.stringify(action.payload));
@@ -112,6 +123,7 @@ const AdminApp = () =>
         copyOfState.isDataInitialized = true;
         return copyOfState;
       case 'SAVE_REQUIRED_VALUE_CHANGED':
+        //console.log('SAVE_REQUIRED_VALUE_CHANGED value:' + action.payload);
         return {...state, isSaveRequired: action.payload};
       default:
         throw Error('Unknown event: ' + action.type);
