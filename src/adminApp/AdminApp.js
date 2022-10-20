@@ -32,11 +32,6 @@ let exam2 = {
   questions: [question1, question2]
 };
 
-// Returns a deep copy of the exam
-const copyExam = (exam) => {
-  return JSON.parse(JSON.stringify(exam));
-};
-
 //let exams = [exam1, exam2];
 const examsDataStub = 
 {
@@ -78,9 +73,7 @@ const AdminApp = () =>
 
   function reducer(state, action)
   {
-    //Make a shallow copy of the state and make a copy the exams array
     let stateCopy = {...state, exams: [...state.exams]};
-    let examCopy = {};
     
     switch (action.type) {
       case 'ANSWER_VALUE_CHANGED':
@@ -89,33 +82,66 @@ const AdminApp = () =>
         stateCopy.isSaveRequired = true;
         return stateCopy;
       case 'ANSWER_CHECKED_STATE_CHANGED':
-        stateCopy.exams[state.selectedExam].questions[action.payload.questionIndex].answers[action.payload.answerIndex].isCorrect =
-          action.payload.value;
-          stateCopy.isSaveRequired = true;
+      { 
+        stateCopy.exams[state.selectedExam] = 
+          {...state.exams[state.selectedExam], questions: [...state.exams[state.selectedExam].questions]};
+        const questionIndex = action.payload.questionIndex;
+        //Make a shadow copy of the modified question and replace the current one
+        stateCopy.exams[state.selectedExam].questions[questionIndex] = 
+          {...state.exams[state.selectedExam].questions[questionIndex],
+            answers: [...state.exams[state.selectedExam].questions[questionIndex].answers]
+          };
+        //Make a deep copy of the modified answer
+        const answerIndex = action.payload.answerIndex;
+        let answerCopyDeep = JSON.parse(JSON.stringify(
+          stateCopy.exams[state.selectedExam].questions[questionIndex].answers[answerIndex]));
+        answerCopyDeep.isCorrect = action.payload.value;
+        stateCopy.exams[state.selectedExam].questions[questionIndex].answers[answerIndex] = answerCopyDeep;
+        stateCopy.isSaveRequired = true;
         return stateCopy;
+        /*
+        stateCopy.exams[state.selectedExam] = 
+          {...state.exams[state.selectedExam], questions: [...state.exams[state.selectedExam].questions]};
+        const questionIndex = action.payload.questionIndex;
+        let questionCopyDeep = JSON.parse(JSON.stringify(state.exams[state.selectedExam].questions[questionIndex]));
+        questionCopyDeep.answers[action.payload.answerIndex].isCorrect = action.payload.value;
+        stateCopy.exams[state.selectedExam].questions[questionIndex] = questionCopyDeep;
+        stateCopy.isSaveRequired = true;
+        return stateCopy;
+        */
+      }
       case 'ADD_ANSWER_CLICKED':
-        //console.log("add answer");
-        examCopy = copyExam(state.exams[state.selectedExam]);
-        examCopy.questions[action.payload.questionIndex].answers.push({...answerStub});
-        stateCopy.exams[state.selectedExam] = examCopy;
+      {
+        //Make a shallow copy of the modified exam and replace the current one in the exams array
+        stateCopy.exams[state.selectedExam] = {...state.exams[state.selectedExam]};
+        //Make a shadow copy of the questions array of the selected exam
+        stateCopy.exams[state.selectedExam].questions = [...state.exams[state.selectedExam].questions];
+        //Make a deep copy of the modified question and add a new answer to it
+        const questionIndex = action.payload.questionIndex;
+        let questionCopyDeep = JSON.parse(JSON.stringify(state.exams[state.selectedExam].questions[questionIndex]));
+        questionCopyDeep.answers.push({...answerStub});
+        //Replace the existing question object with the modified one
+        stateCopy.exams[state.selectedExam].questions[questionIndex] = questionCopyDeep;
         stateCopy.isSaveRequired = true;
         return stateCopy;
-        /*stateCopy = JSON.parse(JSON.stringify(state));
-        stateCopy.exams[state.selectedExam].questions[action.payload.questionIndex].answers.push({...answerStub});
-        stateCopy.isSaveRequired = true;
-        return stateCopy;*/
+      }
       case 'ADD_QUESTION_CLICKED':
-        examCopy = copyExam(state.exams[state.selectedExam]);
-        examCopy.questions.push({...questionStub});
-        stateCopy.exams[state.selectedExam] = examCopy;
+        stateCopy.exams[state.selectedExam] = 
+          {...state.exams[state.selectedExam], questions: [...state.exams[state.selectedExam].questions]};
+        stateCopy.exams[state.selectedExam].questions.push({...questionStub});
         stateCopy.isSaveRequired = true;
         return stateCopy;
       case 'QUESTION_VALUE_CHANGED':
-        examCopy = copyExam(state.exams[state.selectedExam]);
-        examCopy.questions[action.payload.questionIndex].question = action.payload.value;
-        stateCopy.exams[state.selectedExam] = examCopy;
+      {
+        //Make a deep copy only of the modified question
+        stateCopy.exams[state.selectedExam] = 
+          {...state.exams[state.selectedExam], questions: [...state.exams[state.selectedExam].questions]};
+        let questionCopyDeep = JSON.parse(JSON.stringify(state.exams[state.selectedExam].questions[action.payload.questionIndex]));
+        questionCopyDeep.question = action.payload.value;
+        stateCopy.exams[state.selectedExam].questions[action.payload.questionIndex] = questionCopyDeep;
         stateCopy.isSaveRequired = true;
         return stateCopy;
+      }
       case 'INITIALIZE_DATA':
         const copyOfState = JSON.parse(JSON.stringify(action.payload));
         //Note: isDataInitialized not used anywhere yet
