@@ -90,15 +90,13 @@ const AdminApp = () =>
         console.log("add answer");
         //Shallow copy doesn't work properly, adds two answers
         const questionIndex = action.payload.questionIndex;
-        //Make a deep copy of the modified question object
-        let questionCopy = JSON.parse(JSON.stringify(
-          state.exams[state.selectedExam].questions[questionIndex]));
-        questionCopy.answers.push({...answerStub});
-        //Make copies of arrays
+        //Make a copy of exams array
         stateCopy.exams = state.exams.slice();
-        stateCopy.exams[state.selectedExam].questions = state.exams[state.selectedExam].questions.slice();
-        //Replace a question object with the copied one
-        stateCopy.exams[state.selectedExam].questions[questionIndex] = questionCopy;
+        // Make a deep copy of questions
+        stateCopy.exams[state.selectedExam].questions =
+          state.exams[state.selectedExam].questions.map( (question) => JSON.parse(JSON.stringify(question)) );
+        //Add a new answer
+        stateCopy.exams[state.selectedExam].questions[questionIndex].answers.push({...answerStub});
         stateCopy.isSaveRequired = true;
         return stateCopy;
         
