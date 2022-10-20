@@ -88,15 +88,15 @@ const AdminApp = () =>
         return stateCopy;
       case 'ADD_ANSWER_CLICKED':
         console.log("add answer");
-        //Shallow copy doesn't work properly, adds two answers
         const questionIndex = action.payload.questionIndex;
-        //Make a copy of exams array
-        stateCopy.exams = state.exams.slice();
-        // Make a deep copy of questions
-        stateCopy.exams[state.selectedExam].questions =
-          state.exams[state.selectedExam].questions.map( (question) => JSON.parse(JSON.stringify(question)) );
+        //Make a deep copy of the selected exam
+        let examCopy = JSON.parse(JSON.stringify(state.exams[state.selectedExam]));
         //Add a new answer
-        stateCopy.exams[state.selectedExam].questions[questionIndex].answers.push({...answerStub});
+        examCopy.questions[questionIndex].answers.push({...answerStub});
+        //Copy exams array and replace the current exam with a copy
+        stateCopy.exams = state.exams.slice();
+        stateCopy.exams[state.selectedExam] = examCopy;
+
         stateCopy.isSaveRequired = true;
         return stateCopy;
         
