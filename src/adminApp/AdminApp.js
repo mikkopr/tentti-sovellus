@@ -144,12 +144,12 @@ const AdminApp = () =>
       }
       case 'INITIALIZE_DATA':
         const copyOfState = JSON.parse(JSON.stringify(action.payload));
-        //Note: isDataInitialized not used anywhere yet
-        copyOfState.isDataInitialized = true;
         return copyOfState;
       case 'SAVE_REQUIRED_VALUE_CHANGED':
         //console.log('SAVE_REQUIRED_VALUE_CHANGED value:' + action.payload);
         return {...state, isSaveRequired: action.payload};
+      case 'EXAM_SELECTED':
+        return {...state, selectedExam: action.payload};
       default:
         throw Error('Unknown event: ' + action.type);
     }
