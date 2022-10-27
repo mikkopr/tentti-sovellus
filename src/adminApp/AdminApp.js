@@ -1,73 +1,64 @@
 
-import { useEffect, useReducer } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 
 import '../App.css';
 
 import EditExam from './EditExam';
 import ExamMenu from '../ExamMenu';
+import axios from 'axios';
 
 const answerStub = {answer: 'Vastaus', isCorrect: false};
 const questionStub = {question: 'Kysymys?', answers: [{...answerStub}]}
 
-const answers1 = [
-  {answer: "Vastaus_1_1", isCorrect: true},
-  {answer: "Vastaus_1_2", isCorrect: false}
-  ];
-
-const answers2 = [
-  {answer: "Vastaus_2_1", isCorrect: false},
-  {answer: "Vastaus_2_2", isCorrect: true}
-  ];
-
-let question1 = {question: "Ensimmäinen kysymys?", answers: answers1};
-let question2 = {question: "Toinen kysymys?", answers: answers2};
-
-let exam1 = {
-  name: "Haskell perusteet",
-  questions: [question1, question2]
-};
-
-let exam2 = {
-  name: "Javascript perusteet",
-  questions: [question1, question2]
-};
-
-//let exams = [exam1, exam2];
 const examsDataStub = 
 {
-  exams: [exam1, exam2],
-  selectedExam: 0,
+  exams: [],
+  selectedExam: -1,
   isSaveRequired: false,
-  isDataInitialized: false
+  dataFetchRequired: true
 };
 
 const STORAGE_KEY = 'examsData';
+const SERVER = 'http://localhost:8080';
 
 const AdminApp = () => 
 {
   const [examsState, dispatch] = useReducer(reducer, examsDataStub);
+  //const [initialized, setInitialized] = useState(false);
 
+  useEffect ( () =>
+  {
+    const fetchData = async () => {
+      console.log("Fetching data");
+      try {
+        const result = await axios(SERVER);
+        dispatch({type: 'DATA_RECEIVED', payload: result.data});
+      }
+      catch (error) {
+        console.log("Failed to fetch data");
+        dispatch({type: 'FAILED_TO_FETCH_DATA', payload: error});
+      }
+    }
+    if (examsState.dataFetchRequired) {
+      fetchData();
+    }
+  }, [examsState.dataFetchRequired]);
+
+  //Sends the state object to the server when examsState.isSaveRequired == true
   useEffect( () =>
   {
-    const examsData = localStorage.getItem(STORAGE_KEY);
-    //TODO: verify the data
-    if (examsData == null) {
-      console.log('No exams data in storage, uses an initial object for data');
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(examsDataStub));
-      dispatch({type: 'INITIALIZE_DATA', payload: examsDataStub});
+    const postData = async () =>
+    {
+      try {
+        await axios.post(SERVER, examsState);
+        dispatch({type: 'DATA_SAVED'});
+      }
+      catch (error) {
+        dispatch({type: 'FAILED_TO_SAVE_DATA', payload: error})
+      }
     }
-    else {
-      console.log('Uses exams data in storage');
-      dispatch({type: 'INITIALIZE_DATA', payload: JSON.parse(examsData)});
-    }
-  }, []);
-
-  // Saves state object to storage when examsState.isSaveRequired == true
-  useEffect( () =>
-  {
     if (examsState.isSaveRequired) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(examsState));
-      dispatch({type: 'SAVE_REQUIRED_VALUE_CHANGED', payload: false});
+      postData();
     }
   }, [examsState.isSaveRequired]);
 
@@ -142,14 +133,43 @@ const AdminApp = () =>
         stateCopy.isSaveRequired = true;
         return stateCopy;
       }
-      case 'INITIALIZE_DATA':
+      /*case 'INITIALIZE_DATA':
         const copyOfState = JSON.parse(JSON.stringify(action.payload));
-        return copyOfState;
-      case 'SAVE_REQUIRED_VALUE_CHANGED':
-        //console.log('SAVE_REQUIRED_VALUE_CHANGED value:' + action.payload);
-        return {...state, isSaveRequired: action.payload};
+        return copyOfState;*/
+      /*case 'SAVE_REQUIRED_VALUE_CHANGED':
+        console.log('SAVE_REQUIRED_VALUE_CHANGED');
+        return {...state, isSaveRequired: action.payload};*/
       case 'EXAM_SELECTED':
         return {...state, selectedExam: action.payload};
+      /*case 'INITIAL_DATA_RECEIVED':
+      {
+        console.log('INITIAL_DATA_RECEIVED');
+        const stateCopy = JSON.parse(JSON.stringify(action.payload));
+        stateCopy.dataFetchRequired = false;
+        stateCopy.failedToFetch = false;
+        stateCopy.selectedExam = -1;
+        stateCopy.isSaveRequired = false;
+        return stateCopy;
+      }*/
+      case 'DATA_RECEIVED':
+      {
+        console.log('DATA_RECEIVED');
+        const stateCopy = JSON.parse(JSON.stringify(action.payload));
+        stateCopy.dataFetchRequired = false;
+        stateCopy.failedToFetch = false;
+        stateCopy.isSaveRequired = false;
+        stateCopy.selectedExam = -1;
+        return stateCopy;
+      }
+      case 'FAILED_TO_FETCH_DATA':
+        console.log('FAILED_TO_FETCH_DATA');
+        return {...state, failedToFetch: true};
+      case 'DATA_SAVED':
+        console.log('DATA_SAVED');
+        return {...state, isSaveRequired: false, failedToSave: false};
+      case 'FAILED_TO_SAVE_DATA':
+        console.log('FAILED_TO_SAVE_DATA');
+        return {...state, isSaveRequired: true, failedToSave: true};
       default:
         throw Error('Unknown event: ' + action.type);
     }
@@ -157,8 +177,8 @@ const AdminApp = () =>
 
   return (
     <div className='App'>
-      {<ExamMenu exams={examsState.exams} dispatch={dispatch}/>}
-      {<EditExam exam={examsState.exams[examsState.selectedExam]} dispatch={dispatch}/>}
+      {!examsState.dataFetchRequired && <ExamMenu exams={examsState.exams} dispatch={dispatch}/>}
+      {examsState.selectedExam > -1 && <EditExam exam={examsState.exams[examsState.selectedExam]} dispatch={dispatch}/>}
     </div>
     )
 }
