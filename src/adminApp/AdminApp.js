@@ -181,6 +181,9 @@ const AdminApp = () =>
         const user = {name: action.payload.username, password: action.payload.password};
         return {...state, user: user, loggedIn: true};
       }
+      case 'LOG_OUT_REQUESTED':
+        console.log('LOG_OUT_REQUESTED');
+        return {...state, user: {}, loggedIn: false};
       default:
         throw Error('Unknown event: ' + action.type);
     }
@@ -188,6 +191,9 @@ const AdminApp = () =>
 
   return (
     <div className='App'>
+      {examsState.loggedIn && <input type='button' value='Kirjaudu ulos' onClick={(event) =>
+        dispatch({type: 'LOG_OUT_REQUESTED'})}/>
+      }
       {!examsState.loggedIn && <Login dispatch={dispatch}/>}
       {examsState.loggedIn && !examsState.dataFetchRequired && <ExamMenu exams={examsState.exams} dispatch={dispatch}/>}
       {examsState.loggedIn && examsState.selectedExam > -1 && <EditExam exam={examsState.exams[examsState.selectedExam]} dispatch={dispatch}/>}
