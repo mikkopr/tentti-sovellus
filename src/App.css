@@ -61,3 +61,9 @@
   background-color: aqua;
   width: min-content;
 }
+
+.login {
+  padding: 0.5em;
+  width: 25em;
+  background-color: skyblue;
+}

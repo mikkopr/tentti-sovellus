@@ -1,21 +1,24 @@
 
 import { useEffect, useReducer, useState } from 'react';
+import axios from 'axios';
 
 import '../App.css';
 
 import EditExam from './EditExam';
 import ExamMenu from '../ExamMenu';
-import axios from 'axios';
+import Login from '../Login';
 
 const answerStub = {answer: 'Vastaus', isCorrect: false};
 const questionStub = {question: 'Kysymys?', answers: [{...answerStub}]}
 
 const examsDataStub = 
 {
+  user: {},
   exams: [],
   selectedExam: -1,
   isSaveRequired: false,
-  dataFetchRequired: true
+  dataFetchRequired: true,
+  loggedIn: false
 };
 
 const STORAGE_KEY = 'examsData';
@@ -39,12 +42,11 @@ const AdminApp = () =>
         dispatch({type: 'FAILED_TO_FETCH_DATA', payload: error});
       }
     }
-    if (examsState.dataFetchRequired) {
+    if (examsState.dataFetchRequired && examsState.loggedIn) {
       fetchData();
     }
-  }, [examsState.dataFetchRequired]);
+  }, [examsState.dataFetchRequired, examsState.loggedIn]);
 
-  //Sends the state object to the server when examsState.isSaveRequired == true
   useEffect( () =>
   {
     const postData = async () =>
@@ -57,10 +59,10 @@ const AdminApp = () =>
         dispatch({type: 'FAILED_TO_SAVE_DATA', payload: error})
       }
     }
-    if (examsState.isSaveRequired) {
+    if (examsState.isSaveRequired && examsState.loggedIn) {
       postData();
     }
-  }, [examsState.isSaveRequired]);
+  }, [examsState.isSaveRequired, examsState.loggedIn]);
 
   function reducer(state, action)
   {
@@ -159,6 +161,9 @@ const AdminApp = () =>
         stateCopy.failedToFetch = false;
         stateCopy.isSaveRequired = false;
         stateCopy.selectedExam = -1;
+        //TODO: GET doesn't check credentials and may returned data may not have user object
+        stateCopy.user = {...state.user};
+        stateCopy.loggedIn = true;
         return stateCopy;
       }
       case 'FAILED_TO_FETCH_DATA':
@@ -170,6 +175,12 @@ const AdminApp = () =>
       case 'FAILED_TO_SAVE_DATA':
         console.log('FAILED_TO_SAVE_DATA');
         return {...state, isSaveRequired: true, failedToSave: true};
+      case 'USER_CREDENTIALS_RECEIVED':
+      {
+        console.log('USER_CREDENTIALS_RECEIVED');
+        const user = {name: action.payload.username, password: action.payload.password};
+        return {...state, user: user, loggedIn: true};
+      }
       default:
         throw Error('Unknown event: ' + action.type);
     }
@@ -177,8 +188,11 @@ const AdminApp = () =>
 
   return (
     <div className='App'>
-      {!examsState.dataFetchRequired && <ExamMenu exams={examsState.exams} dispatch={dispatch}/>}
-      {examsState.selectedExam > -1 && <EditExam exam={examsState.exams[examsState.selectedExam]} dispatch={dispatch}/>}
+      {!examsState.loggedIn && <Login dispatch={dispatch}/>}
+      {examsState.loggedIn && !examsState.dataFetchRequired && <ExamMenu exams={examsState.exams} dispatch={dispatch}/>}
+      {examsState.loggedIn && examsState.selectedExam > -1 && <EditExam exam={examsState.exams[examsState.selectedExam]} dispatch={dispatch}/>}
+      {examsState.failedToFetch && <p>Tietojen nouto palvelimelta epäonnistui</p>}
+      {examsState.failedToSave && <p>Tietojen tallennus palvelimelle epäonnistui</p>}
     </div>
     )
 }
