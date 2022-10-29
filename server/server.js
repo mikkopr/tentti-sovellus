@@ -50,7 +50,7 @@ app.post('/', async (req, res) => {
     res.status(500).send('Failed to verify user credentials: ' + error.message);
     return;
   }
-  //Save verified user credentials with the other data
+  /*//Save verified user credentials with the other data
   const dataCopy = JSON.parse(JSON.stringify(req.body));
   dataCopy.user = verifiedUser;
 
@@ -60,9 +60,9 @@ app.post('/', async (req, res) => {
   catch (error) {
     res.status(500).send('Write error: ' + error.message);
     return;
-  }
-  res.send('Data writed');
-  
+  }*/
+
+  res.send(JSON.stringify(verifiedUser));
 });
 
 app.listen(port, () => {
@@ -101,9 +101,9 @@ const verifyCredentials = async (reqBody, credentialsFile) =>
     console.log('matchingUser === undefined');
     return null;
   }
-  if (matchingUser.admin) {
+  if (matchingUser.admin === true) {
     console.log('{...matchingUser, admin: true}');
-    return {...matchingUser, admin: true};
+    return matchingUser;
   }
   else {
     console.log('{...matchingUser, admin: false}');

@@ -34,7 +34,7 @@ const AdminApp = () =>
     const fetchData = async () => {
       console.log("Fetching data");
       try {
-        const result = await axios(SERVER);
+        const result = await axios(SERVER); //returns object
         dispatch({type: 'DATA_RECEIVED', payload: result.data});
       }
       catch (error) {
@@ -52,8 +52,8 @@ const AdminApp = () =>
     const postData = async () =>
     {
       try {
-        await axios.post(SERVER, examsState);
-        dispatch({type: 'DATA_SAVED'});
+        const result = await axios.post(SERVER, examsState); //returns object
+        dispatch({type: 'DATA_SAVED', payload: result.data});
       }
       catch (error) {
         dispatch({type: 'FAILED_TO_SAVE_DATA', payload: error})
@@ -171,7 +171,7 @@ const AdminApp = () =>
         return {...state, failedToFetch: true};
       case 'DATA_SAVED':
         console.log('DATA_SAVED');
-        return {...state, isSaveRequired: false, failedToSave: false};
+        return {...state, user: {...action.payload},isSaveRequired: false, failedToSave: false};
       case 'FAILED_TO_SAVE_DATA':
         console.log('FAILED_TO_SAVE_DATA');
         return {...state, isSaveRequired: true, failedToSave: true};
