@@ -1,12 +1,13 @@
 
 import { useEffect, useReducer, useState } from 'react';
-import axios from 'axios';
+import axios, { AxiosHeaders } from 'axios';
 
 import '../App.css';
 
 import EditExam from './EditExam';
 import ExamMenu from '../ExamMenu';
 import Login from '../Login';
+import { act } from 'react-dom/test-utils';
 
 const answerStub = {answer: 'Vastaus', isCorrect: false};
 const questionStub = {question: 'Kysymys?', answers: [{...answerStub}]}
@@ -17,8 +18,11 @@ const examsDataStub =
   exams: [],
   selectedExam: -1,
   isSaveRequired: false,
+  failedToSave: false,
   dataFetchRequired: true,
-  loggedIn: false
+  loggedIn: false,
+  loginRequested: false,
+  failedToAuthenticate: false
 };
 
 const STORAGE_KEY = 'examsData';
@@ -51,18 +55,41 @@ const AdminApp = () =>
   {
     const postData = async () =>
     {
+      let result;
       try {
-        const result = await axios.post(SERVER, examsState); //returns object
-        dispatch({type: 'DATA_SAVED', payload: result.data});
+        result = await axios.post(SERVER, examsState); //returns object
+        if (result.status >= 200 && result.status < 300)
+          dispatch({type: 'DATA_SAVED', payload: result.data});
+        else
+          dispatch({type: 'FAILED_TO_SAVE_DATA', payload: result.status});
       }
       catch (error) {
-        dispatch({type: 'FAILED_TO_SAVE_DATA', payload: error})
+        //Note that 403 ends up here!
+        dispatch({type: 'FAILED_TO_SAVE_DATA', payload: error?.response?.status});
       }
     }
     if (examsState.isSaveRequired && examsState.loggedIn) {
       postData();
     }
-  }, [examsState.isSaveRequired, examsState.loggedIn]);
+  }, [examsState.isSaveRequired, examsState.loggedIn, examsState.failedToSave]);
+
+  useEffect( () =>
+  {
+    const postData = async () =>
+    {
+      try {
+        const result = await axios.post(SERVER + '/login', examsState.user);
+        dispatch({type: 'CREDENTIALS_VERIFICATION_RESPONSE_RECEIVED', 
+          payload: {status: result.status, data: result.data}});
+      }
+      catch (error) {
+        dispatch({type: 'FAILED_TO_VERIFY_CREDENTIALS', payload: error})
+      }
+    }
+    if (examsState.loginRequested && !examsState.loggedIn) {
+      postData();
+    }
+  }, [examsState.loginRequested, examsState.loggedIn]);
 
   function reducer(state, action)
   {
@@ -73,6 +100,7 @@ const AdminApp = () =>
         stateCopy.exams[state.selectedExam].questions[action.payload.questionIndex].answers[action.payload.answerIndex].answer =
           action.payload.value;
         stateCopy.isSaveRequired = true;
+        stateCopy.failedToSave = false;
         return stateCopy;
       case 'ANSWER_CHECKED_STATE_CHANGED':
       { 
@@ -91,6 +119,7 @@ const AdminApp = () =>
         answerCopyDeep.isCorrect = action.payload.value;
         stateCopy.exams[state.selectedExam].questions[questionIndex].answers[answerIndex] = answerCopyDeep;
         stateCopy.isSaveRequired = true;
+        stateCopy.failedToSave = false;
         return stateCopy;
         /*
         stateCopy.exams[state.selectedExam] = 
@@ -116,6 +145,7 @@ const AdminApp = () =>
         //Replace the existing question object with the modified one
         stateCopy.exams[state.selectedExam].questions[questionIndex] = questionCopyDeep;
         stateCopy.isSaveRequired = true;
+        stateCopy.failedToSave = false;
         return stateCopy;
       }
       case 'ADD_QUESTION_CLICKED':
@@ -123,6 +153,7 @@ const AdminApp = () =>
           {...state.exams[state.selectedExam], questions: [...state.exams[state.selectedExam].questions]};
         stateCopy.exams[state.selectedExam].questions.push({...questionStub});
         stateCopy.isSaveRequired = true;
+        stateCopy.failedToSave = false;
         return stateCopy;
       case 'QUESTION_VALUE_CHANGED':
       {
@@ -133,6 +164,7 @@ const AdminApp = () =>
         questionCopyDeep.question = action.payload.value;
         stateCopy.exams[state.selectedExam].questions[action.payload.questionIndex] = questionCopyDeep;
         stateCopy.isSaveRequired = true;
+        stateCopy.failedToSave = false;
         return stateCopy;
       }
       /*case 'INITIALIZE_DATA':
@@ -160,6 +192,7 @@ const AdminApp = () =>
         stateCopy.dataFetchRequired = false;
         stateCopy.failedToFetch = false;
         stateCopy.isSaveRequired = false;
+        stateCopy.failedToSave = false;
         stateCopy.selectedExam = -1;
         //TODO: GET doesn't check credentials and may returned data may not have user object
         stateCopy.user = {...state.user};
@@ -171,19 +204,39 @@ const AdminApp = () =>
         return {...state, failedToFetch: true};
       case 'DATA_SAVED':
         console.log('DATA_SAVED');
-        return {...state, user: {...action.payload},isSaveRequired: false, failedToSave: false};
+        return {...state, isSaveRequired: false, failedToSave: false, notAuthorized: false};
       case 'FAILED_TO_SAVE_DATA':
+      {
         console.log('FAILED_TO_SAVE_DATA');
-        return {...state, isSaveRequired: true, failedToSave: true};
+        const responseStatus = action.payload;
+        if (responseStatus == 403)
+          return {...state, isSaveRequired: true, failedToSave: true, notAuthorized: true};
+        else  
+          return {...state, isSaveRequired: true, failedToSave: true};
+      }
       case 'USER_CREDENTIALS_RECEIVED':
       {
         console.log('USER_CREDENTIALS_RECEIVED');
         const user = {name: action.payload.username, password: action.payload.password};
-        return {...state, user: user, loggedIn: true};
+        return {...state, user: {...user, verified: false}, loggedIn: false, loginRequested: true, 
+          authenticationFailed: false, notAuthorized: false, isSaveRequired: false, failedToSave: false};
       }
+      case 'CREDENTIALS_VERIFICATION_RESPONSE_RECEIVED':
+      {
+        console.log('CREDENTIALS_VERIFICATION_RESPONSE_RECEIVED');
+        const responseStatus = action.payload.status;
+        const user = action.payload.data;
+        if (responseStatus == 200 && user.verified === true) {
+          return {...state, user: {...user}, loggedIn: true, loginRequested: false, dataFetchRequired: true};
+        }
+        return {...state, user: {...user, verified: false}, loggedIn: false, loginRequested: false, failedToAuthenticate: true};
+      }
+      case 'FAILED_TO_VERIFY_CREDENTIALS':
+        console.log('FAILED_TO_VERIFY_CREDENTIALS');
+        return {...state, user: {...state.user, verified: false}, loggedIn: false, failedToAuthenticate: true};
       case 'LOG_OUT_REQUESTED':
         console.log('LOG_OUT_REQUESTED');
-        return {...state, user: {}, loggedIn: false};
+        return {...state, user: {}, loggedIn: false, notAuthorized: false};
       default:
         throw Error('Unknown event: ' + action.type);
     }
@@ -195,10 +248,12 @@ const AdminApp = () =>
         dispatch({type: 'LOG_OUT_REQUESTED'})}/>
       }
       {!examsState.loggedIn && <Login dispatch={dispatch}/>}
+      {!examsState.loggedIn && examsState.failedToAuthenticate && <p>Käyttäjätunnus tai salasana virheellinen!</p>}
       {examsState.loggedIn && !examsState.dataFetchRequired && <ExamMenu exams={examsState.exams} dispatch={dispatch}/>}
       {examsState.loggedIn && examsState.selectedExam > -1 && <EditExam exam={examsState.exams[examsState.selectedExam]} dispatch={dispatch}/>}
-      {examsState.failedToFetch && <p>Tietojen nouto palvelimelta epäonnistui</p>}
-      {examsState.failedToSave && <p>Tietojen tallennus palvelimelle epäonnistui</p>}
+      {examsState.loggedIn && examsState.failedToFetch && <p>Tietojen nouto palvelimelta epäonnistui</p>}
+      {examsState.loggedIn && examsState.failedToSave && <p>Tietojen tallennus palvelimelle epäonnistui</p>}
+      {examsState.loggedIn && examsState.notAuthorized && <p>Ei valtuuksia</p>}
     </div>
     )
 }
