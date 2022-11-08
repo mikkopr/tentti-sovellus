@@ -1,8 +1,7 @@
 
-
 const {getDbConnConfig} = require('./dbConnConfig');
 const {addExam, fetchExam, fetchExams} = require('./examHandlers');
-const {addQuestionToExam, addAnswerToQuestion, fetchQuestions, fetchAnswers} = require('./questionHandlers');
+const {addQuestionToExam, addAnswerToQuestion, fetchQuestions, fetchAnswers, updateAnswer, removeQuestionFromExam} = require('./questionHandlers');
 
 const {Pool, Client} = require('pg');
 
@@ -93,7 +92,7 @@ app.get('/tentti/:examId', async (req, res) => {
   console.log('GET /tentti/id');
   const examIdParam = validateReqParamId(req.params.examId);
   if (examIdParam == undefined) {
-    res.status(404).send('Invalid request parameter');
+    res.status(404).send('Invalid http requets parameter');
     return;
   }
   let examRow = undefined;
@@ -110,19 +109,13 @@ app.get('/tentti/:examId', async (req, res) => {
   res.status(200).send(examRow);
 });
 
-//TODO: send the data in body
-app.post('/tentti', async (req, res) => {
-  console.log('POST /tentti');
-  const name = validateQueryValueString(req.query.nimi);
-  const description = validateQueryValueString(req.query.kuvaus);
-  const dateString = validateQueryValueDateString(req.query.pvm);
-  if (name === undefined || description === undefined || dateString === undefined) {
-    res.status(404).send('Invalid query parameter');
-    return;
-  }
+/**
+ * Adds a new exam
+ */
+app.post('/tentti', async (req, res) => 
+{  
   try {
-    await addExam(dbConnPool, name, description, new Date(dateString));
-    //await addExam(dbConnPool, 'tentti2', 'kuvaus2', new Date('2022-11-15'));
+    await addExam(dbConnPool, req.body);
   }
   catch (err) {
     res.status(500).send('Database query error: ' + err.message);
@@ -136,18 +129,18 @@ app.post('/tentti', async (req, res) => {
  * Question
  */
 
-//TODO: send the data in body
+/**
+ * Add a new question to the exam
+ */
 app.post('/tentti/:examId/kysymys', async (req, res) => 
 {
   const examIdParam = validateReqParamId(req.params.examId);
-  const text = validateQueryValueString(req.query.teksti);
-  const questionNr = validateQueryValueNumber(req.query.kysymysNr, 1, 10000);
-  if (examIdParam === undefined || text === undefined || questionNr === undefined) {
-    res.status(404).send('Invalid query parameter');
+  if (examIdParam === undefined) {
+    res.status(404).send('Invalid http request parameter');
     return;
   }
   try {
-    await addQuestionToExam(dbConnPool, text, examIdParam, new Number(questionNr));
+    await addQuestionToExam(dbConnPool, examIdParam, req.body);
   }
   catch (err) {
     res.status(500).send('ERROR: ' + err.message);
@@ -157,7 +150,62 @@ app.post('/tentti/:examId/kysymys', async (req, res) =>
   res.status(200).send('Question added');  
 });
 
-a
+/**
+ * Adds the existing question to the exam
+ */
+app.post('/tentti/:examId/kysymys/:questionId', async (req, res) => 
+{
+  console.log('NOT IMPLEMENTED');
+  res.status(200).send('NOT IMPLEMENTED');
+});
+
+/**
+ * Removes the question from the exam. Doesn't delete the question in kysymys table.
+ */
+app.delete('/tentti/:examId/kysymys/:questionId', async (req, res) =>
+{
+  const examIdParam = validateReqParamId(req.params.examId);
+  const questionIdParam = validateReqParamId(req.params.questionId);
+  if (examIdParam === undefined || questionIdParam === undefined) {
+    res.status(400).send('Invalid http request parameter');
+    return;
+  }
+  let deletedRow = undefined;
+  try {
+    deletedRow = await removeQuestionFromExam(dbConnPool, examIdParam, questionIdParam);
+    if (deletedRow !== undefined) {
+      res.status(204).end();
+    }
+    else {
+      res.status(404).send("Not found");
+    }
+  }
+  catch (err) {
+    res.status(500).send('Database query failed');
+    console.log('Database query error:', err);
+    return;
+  }
+});
+
+app.get('/tentti/:examId/kysymykset', async (req, res) => 
+{
+  const examIdParam = validateReqParamId(req.params.examId);
+  if (examIdParam === undefined) {
+    res.status(400).send('Invalid http request parameter');
+    return;
+  }
+  let questionRows = undefined;
+  try {
+    const examIdNr = new Number(examIdParam);
+    questionRows = await fetchQuestions(dbConnPool, examIdNr);
+  }
+  catch (err) {
+    res.status(500).send('Database query failed');
+    console.log('Database query error:', err);
+    return;
+  }
+  res.status(200).send(questionRows);
+});
 
 /***************
  * Answer
@@ -167,7 +215,7 @@ app.get('/kysymys/:questionId/vastaukset', async (req, res) =>
 {
   const questionIdParam = validateReqParamId(req.params.questionId);
   if (questionIdParam === undefined) {
-    res.status(404).send('Invalid request parameter');
+    res.status(404).send('Invalid http request parameter');
     return;
   }
   let answerRows = undefined;
@@ -176,10 +224,68 @@ app.get('/kysymys/:questionId/vastaukset', async (req, res) =>
     answerRows = await fetchAnswers(dbConnPool, questionIdNr);
   }
   catch (err) {
-    res.status(500).send('Database query failed');
+    res.status(500).send('ERROR: ' + err.message);
     console.log('Database query error:', err);
     return;
   }
   res.status(200).send(answerRows);
 });
 
+/**
+ * Updates the question
+ */
+app.post('/kysymys/:questionId', async (req, res) => 
+{
+});
+
+/**
+ * Adds a new answer to the question
+ */
+app.post('/kysymys/:questionId/vastaus', async (req, res) => 
+{
+  const questionIdParam = validateReqParamId(req.params.questionId);
+  if (questionIdParam === undefined) {
+    res.status(404).send('Invalid http request parameter');
+    return;
+  }
+  try {
+    await addAnswerToQuestion(dbConnPool, questionIdParam, req.body);
+  }
+  catch (err) {
+    res.status(500).send('ERROR: ' + err.message);
+    console.log('ERROR: ', err);
+    return;
+  }
+  res.status(200).send('Answer added');  
+});
+
+/**
+ * Updates the answer
+ */
+app.put('/vastaus/:answerId', async (req, res) => 
+{
+  const answerIdParam = validateReqParamId(req.params.answerId);
+  if (answerIdParam === undefined) {
+    res.status(400).send('Invalid http request parameter');
+    return;
+  }
+  const data = req.body;
+  if (data === undefined || data.teksti === undefined || data.oikein === undefined) {
+    res.status(400).send('Invalid http request parameter');
+  }
+  try {
+    const updatedAnswer = await updateAnswer(dbConnPool, answerIdParam, req.body);
+    //Undefined result means that not found
+    if (updatedAnswer !== undefined) {
+      res.status(204).end();  
+    }
+    else {
+      res.status(404).end();
+    }
+  }
+  catch (err) {
+    res.status(500).send('ERROR: ' + err.message);
+    console.log('ERROR: ', err);
+    return;
+  }
+});

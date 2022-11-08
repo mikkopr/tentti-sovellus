@@ -1,8 +1,12 @@
 
-const addExam = async (pool, name, description, date) => 
+const addExam = async (pool, data) => 
 {
+  const date = new Date(data?.pvm); //TODO undefined?
+  if (data === undefined || data.nimi === undefined || data.kuvaus === undefined || date === undefined) {
+    throw new Error('Invalid data: received exam data is invalid');
+  }
   const text = "INSERT INTO tentti(nimi, kuvaus, pvm) VALUES($1, $2, $3)";
-  const values = [name, description, date];
+  const values = [data.nimi, data.kuvaus, date];
   try {
     const result = await pool.query(text, values);
     return result;
