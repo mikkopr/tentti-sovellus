@@ -38,30 +38,72 @@ router.get('/:examId', async (req, res) =>
   try {
     const examIdNr = new Number(examIdParam);
     examRow = await fetchExam(dbConnPool(), examIdNr);
-    console.log('Exam:', examRow);
+    if (examRow !== undefined) {
+      res.status(200).send(examRow);
+    }
+    else {
+      //No content
+      res.status(204).end();
+    }
   }
   catch (err) {
     res.status(500).send('Database query failed');
     console.log('Database query error:', err);
     return;
   }
-  res.status(200).send(examRow);
 });
 
 /**
  * Adds a new exam
  */
- router.post('/', async (req, res) => 
+router.post('/', async (req, res) => 
 {  
+  //TODO test
+  const data = req.body;
+  const date = new Date(data?.pvm); //TODO undefined?
+  if (data === undefined || data.nimi === undefined || data.kuvaus === undefined || date === undefined) {
+    res.status(400).send('Invalid http requets parameter');
+    return;
+  }
   try {
-    await addExam(dbConnPool(), req.body);
+    const examRow = await addExam(dbConnPool(), req.body);
+    res.status(201).send(examRow);
   }
   catch (err) {
     res.status(500).send('Database query error: ' + err.message);
     console.log('Database query error:', err);
     return;
   }
-  res.status(200).send('Exam added');
 });
+
+router.put('/:examId', async (req, res) =>
+{
+  const examIdParam = validateReqParamId(req.params.examId);
+  if (examIdParam === undefined) {
+    res.status(400).send('Invalid http request parameter');
+    return;
+  }
+  const data = req.body;
+  const date = new Date(data?.pvm); //TODO undefined?
+  if (data === undefined || data.nimi === undefined || data.kuvaus === undefined || date === undefined) {
+    res.status(400).send('Invalid http requets parameter');
+    return;
+  }
+  try {
+    const updatedExam = await updateExam(dbConnPool(), examIdParam, req.body);
+      //Undefined result means that not found, postgres doesn't throw error
+    if (updatedExam !== undefined) {
+        res.status(200).send(updatedExam);
+    }
+    else {
+      res.status(400).send('ERROR: tenttiä ei löydy');
+    }
+  }
+  catch (err) {
+      res.status(500).send('ERROR: ' + err.message);
+      console.log('ERROR: ', err);
+      return;
+  }
+})
 
 module.exports = router;

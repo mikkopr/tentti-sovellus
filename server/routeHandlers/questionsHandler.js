@@ -16,33 +16,33 @@ const router = express.Router();
 /**
  * Updates the question. Updates only the attributes that aren't related to a particular exam.
  */
- router.put('/:questionId', async (req, res) => 
- {
-   const questionIdParam = validateReqParamId(req.params.questionId);
-   if (questionIdParam === undefined) {
-     res.status(400).send('Invalid http request parameter');
-     return;
-   }
-   const data = req.body;
-   if (data === undefined || data.teksti === undefined) {
-     res.status(400).send('Invalid http request parameter');
-   }
-   try {
-     const updatedQuestion = await updateQuestion(dbConnPool(), questionIdParam, req.body);
+router.put('/:questionId', async (req, res) => 
+{
+  const questionIdParam = validateReqParamId(req.params.questionId);
+  if (questionIdParam === undefined) {
+    res.status(400).send('Invalid http request parameter');
+    return;
+  }
+  const data = req.body;
+  if (data === undefined || data.teksti === undefined) {
+    res.status(400).send('Invalid http request parameter');
+  }
+  try {
+    const updatedQuestion = await updateQuestion(dbConnPool(), questionIdParam, req.body);
       //Undefined result means that not found, postgres doesn't throw error
-      if (updateQuestion !== undefined) {
-       res.status(200).send(updateQuestion);
-     }
-     else {
-       res.status(400).send('ERROR: kysymystä ei löydy');
-     }
-   }
-   catch (err) {
-     res.status(500).send('ERROR: ' + err.message);
-     console.log('ERROR: ', err);
-     return;
-   }
- })
+    if (updatedQuestion !== undefined) {
+        res.status(200).send(updatedQuestion);
+    }
+    else {
+      res.status(400).send('ERROR: kysymystä ei löydy');
+    }
+  }
+  catch (err) {
+      res.status(500).send('ERROR: ' + err.message);
+      console.log('ERROR: ', err);
+      return;
+  }
+})
 
 /**
  * Adds a new answer to the question

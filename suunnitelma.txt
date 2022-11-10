@@ -1,0 +1,21 @@
+
+*****************************
+10.11.2022 
+
+Mietitty alustavasti reactin ja palvelimen integraatiota.
+Tapahtumankäsittelijöistä asynkroniset tallennuspyynnöt palvelimelle ja
+vastaksen saapuessa dispatchataan tapahtuma reduceriin. Pitää vielä miettiä käytetäänkö
+vain yhtä reduceria vai voiko lapsikomponenteillakin olla oma reducer.
+
+
+Käyttöoikeudet:
+
+Tavoite on, että tavallisella käyttäjällä on lukuoikeus vain tekeillä olevan ja suoritettujen tenttien
+kysymyksiin ja vastauksiin. Ei tekeillä olevan tentin oikeisiin vastauksiin.
+
+Käyttäjä voi lisätä uuden tenttisuorituksen eli ilmoittautua.
+Ei voi muokata.
+Käyttäjä voi poistaa ilmoittautumisen.
+
+Käyttäjä voi rekisteröityä eli luoda uuden käyttäjän.
+Nimen ja emailin voi muuttaa.
