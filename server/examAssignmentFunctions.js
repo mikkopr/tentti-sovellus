@@ -1,5 +1,5 @@
 
-const assingUserToExam = async (pool, userId, examId) =>
+const assignUserToExam = async (pool, userId, examId) =>
 {
   const text = "INSERT INTO tentti_suoritus (kayttaja_id, tentti_id) VALUES ($1, $2) RETURNING *";
   const values = [userId, examId];
@@ -7,4 +7,4 @@ const assingUserToExam = async (pool, userId, examId) =>
   return result?.rows[0];
 }
 
-module.exports = assingUserToExam;
+module.exports = {assignUserToExam};

@@ -1,8 +1,8 @@
 
-const {getDbConnConfig} = require('./dbConnConfig');
+const {dbConnPool} = require('./db');
 const {addExam, fetchExam, fetchExams} = require('./examHandlers');
 const {addQuestionToExam, addAnswerToQuestion, fetchQuestions, fetchAnswers, updateAnswer, updateQuestion, updateQuestionOnly, removeQuestionFromExam} = require('./questionHandlers');
-const {assignUserToExam} = require('./examAssingmentFunctions');
+const {assignUserToExam} = require('./examAssignmentFunctions');
 
 const {Pool, Client, DatabaseError} = require('pg');
 
@@ -11,8 +11,6 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const port = 8080;
-
-const dbConnPool = new Pool(getDbConnConfig());
 
 app.use(cors({
   origin: '*'
@@ -116,7 +114,7 @@ app.post('/tenttiSuoritukset/kayttaja/:userId/tentti/:examId', async (req, res) 
     return;
   }
   try {
-    const assingment = await assignUserToExam(dbConnPool, userId, examId);
+    const assingment = await assignUserToExam(dbConnPool(), userId, examId);
     res.status(200).send(assingment);
   }
   catch (err) {
@@ -157,7 +155,7 @@ app.get('/tentit', async (req, res) => {
   console.log('GET /tentit');
   let examRows = undefined;
   try {
-    examRows = await fetchExams(dbConnPool);
+    examRows = await fetchExams(dbConnPool());
   }
   catch (err) {
     res.status(500).send('Database query failed');
@@ -179,7 +177,7 @@ app.get('/tentit/:examId', async (req, res) => {
   let examRow = undefined;
   try {
     const examIdNr = new Number(examIdParam);
-    examRow = await fetchExam(dbConnPool, examIdNr);
+    examRow = await fetchExam(dbConnPool(), examIdNr);
     console.log('Exam:', examRow);
   }
   catch (err) {
@@ -196,7 +194,7 @@ app.get('/tentit/:examId', async (req, res) => {
 app.post('/tentit', async (req, res) => 
 {  
   try {
-    await addExam(dbConnPool, req.body);
+    await addExam(dbConnPool(), req.body);
   }
   catch (err) {
     res.status(500).send('Database query error: ' + err.message);
@@ -207,13 +205,13 @@ app.post('/tentit', async (req, res) =>
 });
 
 /******************
- * Question
+ * Exam questions
  */
 
 /**
  * Add a new question to the exam
  */
-app.post('/tentit/:examId/kysymys', async (req, res) => 
+app.post('/tenttikysymykset/tentti/:examId/kysymys', async (req, res) => 
 {
   const examIdParam = validateReqParamId(req.params.examId);
   if (examIdParam === undefined) {
@@ -226,7 +224,7 @@ app.post('/tentit/:examId/kysymys', async (req, res) =>
     res.status(400).send('Invalid data: received question data is invalid');
   }
   try {
-    const addedQuestion = await addQuestionToExam(dbConnPool, examIdParam, req.body); 
+    const addedQuestion = await addQuestionToExam(dbConnPool(), examIdParam, req.body); 
     res.status(200).send(addedQuestion);
   }
   catch (err) {
@@ -251,7 +249,7 @@ app.post('/tentit/:examId/kysymys', async (req, res) =>
 /**
  * Adds the existing question to the exam
  */
-app.post('/tentit/:examId/kysymys/:questionId', async (req, res) => 
+app.post('/tenttikysymykset/tentti/:examId/kysymys/:questionId', async (req, res) => 
 {
   console.log('NOT IMPLEMENTED');
   res.status(200).send('NOT IMPLEMENTED');
@@ -260,7 +258,7 @@ app.post('/tentit/:examId/kysymys/:questionId', async (req, res) =>
 /**
  * Removes the question from the exam. Doesn't delete the question in kysymys table.
  */
-app.delete('/tentit/:examId/kysymys/:questionId', async (req, res) =>
+app.delete('/tenttikysymykset/tentti/:examId/kysymys/:questionId', async (req, res) =>
 {
   const examIdParam = validateReqParamId(req.params.examId);
   const questionIdParam = validateReqParamId(req.params.questionId);
@@ -269,7 +267,7 @@ app.delete('/tentit/:examId/kysymys/:questionId', async (req, res) =>
     return;
   }
   try {
-    const deletedRow = await removeQuestionFromExam(dbConnPool, examIdParam, questionIdParam);
+    const deletedRow = await removeQuestionFromExam(dbConnPool(), examIdParam, questionIdParam);
     if (deletedRow !== undefined) {
       res.status(204).end();
     }
@@ -288,7 +286,7 @@ app.delete('/tentit/:examId/kysymys/:questionId', async (req, res) =>
  * Return questions related to the exam and all data associated with a particular question in the exam,
  * such as question number and points.
  */
-app.get('/tentit/:examId/kysymykset', async (req, res) => 
+app.get('/tenttikysymykset/tentti/:examId/kysymykset', async (req, res) => 
 {
   const examIdParam = validateReqParamId(req.params.examId);
   if (examIdParam === undefined) {
@@ -298,7 +296,7 @@ app.get('/tentit/:examId/kysymykset', async (req, res) =>
   let questionRows = undefined;
   try {
     const examIdNr = new Number(examIdParam);
-    questionRows = await fetchQuestions(dbConnPool, examIdNr);
+    questionRows = await fetchQuestions(dbConnPool(), examIdNr);
   }
   catch (err) {
     res.status(500).send('Database query failed');
@@ -309,40 +307,9 @@ app.get('/tentit/:examId/kysymykset', async (req, res) =>
 });
 
 /**
- * Updates the question. Updates only the attributes that aren't related to a particular exam.
- */
-app.put('/kysymykset/:questionId', async (req, res) => 
-{
-  const questionIdParam = validateReqParamId(req.params.questionId);
-  if (questionIdParam === undefined) {
-    res.status(400).send('Invalid http request parameter');
-    return;
-  }
-  const data = req.body;
-  if (data === undefined || data.teksti === undefined) {
-    res.status(400).send('Invalid http request parameter');
-  }
-  try {
-    const updatedQuestion = await updateQuestionOnly(dbConnPool, questionIdParam, req.body);
-     //Undefined result means that not found, postgres doesn't throw error
-     if (updateQuestion !== undefined) {
-      res.status(200).send(updateQuestion);
-    }
-    else {
-      res.status(400).send('ERROR: kysymystä ei löydy');
-    }
-  }
-  catch (err) {
-    res.status(500).send('ERROR: ' + err.message);
-    console.log('ERROR: ', err);
-    return;
-  }
-})
-
-/**
  * Updates the question attached to the exam. Doesn't create a new question if doesn't exist.
  */
-app.put('/tentit/:examId/kysymys/:questionId', async (req, res) => 
+app.put('/tenttikysymykset/tentti/:examId/kysymys/:questionId', async (req, res) => 
 {
   const examIdParam = validateReqParamId(req.params.examId);
   const questionIdParam = validateReqParamId(req.params.questionId);
@@ -355,7 +322,7 @@ app.put('/tentit/:examId/kysymys/:questionId', async (req, res) =>
     res.status(400).send('Invalid http request parameter');
   }
   try {
-    const updatedQuestion = await updateQuestion(dbConnPool, examIdParam, questionIdParam, req.body);
+    const updatedQuestion = await updateQuestion(dbConnPool(), examIdParam, questionIdParam, req.body);
     //Undefined result means that not found, postgres doesn't throw error
     if (updatedQuestion !== undefined) {
       res.status(200).send(updatedQuestion);
@@ -383,9 +350,40 @@ app.put('/tentit/:examId/kysymys/:questionId', async (req, res) =>
 });
 
 
-/***************
- * Answer
+/******************
+ *  Questions
  */
+
+/**
+ * Updates the question. Updates only the attributes that aren't related to a particular exam.
+ */
+ app.put('/kysymykset/:questionId', async (req, res) => 
+ {
+   const questionIdParam = validateReqParamId(req.params.questionId);
+   if (questionIdParam === undefined) {
+     res.status(400).send('Invalid http request parameter');
+     return;
+   }
+   const data = req.body;
+   if (data === undefined || data.teksti === undefined) {
+     res.status(400).send('Invalid http request parameter');
+   }
+   try {
+     const updatedQuestion = await updateQuestionOnly(dbConnPool(), questionIdParam, req.body);
+      //Undefined result means that not found, postgres doesn't throw error
+      if (updateQuestion !== undefined) {
+       res.status(200).send(updateQuestion);
+     }
+     else {
+       res.status(400).send('ERROR: kysymystä ei löydy');
+     }
+   }
+   catch (err) {
+     res.status(500).send('ERROR: ' + err.message);
+     console.log('ERROR: ', err);
+     return;
+   }
+ })
 
 /**
  * Adds a new answer to the question
@@ -402,7 +400,7 @@ app.put('/tentit/:examId/kysymys/:questionId', async (req, res) =>
      res.status(400).send('Invalid data: received answer data is invalid');
    }
    try {
-     const result = await addAnswerToQuestion(dbConnPool, questionIdParam, req.body);
+     const result = await addAnswerToQuestion(dbConnPool(), questionIdParam, req.body);
      res.status(201).send(result);
    }
    catch (err) {
@@ -433,7 +431,7 @@ app.get('/kysymykset/:questionId/vastaukset', async (req, res) =>
   let answerRows = undefined;
   try {
     const questionIdNr = new Number(questionIdParam);
-    answerRows = await fetchAnswers(dbConnPool, questionIdNr);
+    answerRows = await fetchAnswers(dbConnPool(), questionIdNr);
   }
   catch (err) {
     res.status(500).send('ERROR: ' + err.message);
@@ -442,6 +440,10 @@ app.get('/kysymykset/:questionId/vastaukset', async (req, res) =>
   }
   res.status(200).send(answerRows);
 });
+
+/******************
+ * Answers
+ */
 
 /**
  * Updates the answer. Doesn't create a new answer if doesn't exist.
@@ -458,7 +460,7 @@ app.put('/vastaukset/:answerId', async (req, res) =>
     res.status(400).send('Invalid http request parameter');
   }
   try {
-    const updatedAnswer = await updateAnswer(dbConnPool, answerIdParam, req.body);
+    const updatedAnswer = await updateAnswer(dbConnPool(), answerIdParam, req.body);
     //Undefined result means that not found, postgres doesn't throw error
     if (updatedAnswer !== undefined) {
       res.status(200).send(updatedAnswer);
