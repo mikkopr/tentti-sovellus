@@ -33,14 +33,14 @@ router.put('/:answerId', async (req, res) =>
     const text = "UPDATE vastaus SET teksti=$1, oikein=$2 WHERE id=$3 RETURNING *";
     const values = [data.teksti, data.oikein, answerId];
     const result = await dbConnPool().query(text, values);
-    const updatedAnswer = result?.rows[0];
+    const updatedAnswer = result.rows[0];
     
     //Undefined result means that not found, postgres doesn't throw error
     if (updatedAnswer !== undefined) {
       res.status(200).send(updatedAnswer);
     }
     else {
-      res.status(400).send('ERROR: vastausta ei löydy');
+      res.status(404).send('ERROR: Answer not found');
     }
   }
   catch (err) {

@@ -2,7 +2,7 @@
 const express = require('express');
 
 const {dbConnPool} = require('../db');
-const {fetchExams, fetchExam, addExam} = require('../examFunctions');
+const {fetchExams, fetchExam, addExam, updateExam} = require('../examFunctions');
 const {validateReqParamId} = require('../validateFunctions');
 
 const router = express.Router();
@@ -84,19 +84,18 @@ router.put('/:examId', async (req, res) =>
     return;
   }
   const data = req.body;
-  const date = new Date(data?.pvm); //TODO undefined?
-  if (data === undefined || data.nimi === undefined || data.kuvaus === undefined || date === undefined) {
+  if (data === undefined || data.nimi === undefined || data.kuvaus === undefined || data.pvm === undefined) {
     res.status(400).send('Invalid http requets parameter');
     return;
   }
   try {
     const updatedExam = await updateExam(dbConnPool(), examIdParam, req.body);
-      //Undefined result means that not found, postgres doesn't throw error
+    //Undefined result means that not found, postgres doesn't throw error
     if (updatedExam !== undefined) {
         res.status(200).send(updatedExam);
     }
     else {
-      res.status(400).send('ERROR: tenttiä ei löydy');
+      res.status(404).send('ERROR: Exam not found');
     }
   }
   catch (err) {

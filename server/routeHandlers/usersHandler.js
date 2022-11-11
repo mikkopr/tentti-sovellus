@@ -12,7 +12,7 @@ const router = express.Router();
 
 router.get('/', async (req, res) => 
 {
-  const text = "SELECT * FROM kayttajat ORDER BY id ASC";
+  const text = "SELECT * FROM kayttaja ORDER BY id ASC";
   try {
     const result = await dbConnPool().query(text);
     res.status(200).send(result?.rows);
@@ -31,7 +31,7 @@ router.get('/:userId', async (req, res) =>
     res.status(400).send('Invalid http request parameter');
     return;
   }
-  const text = "SELECT * FROM kayttajat WHERE id=$1";
+  const text = "SELECT * FROM kayttaja WHERE id=$1";
   const values = [userIdParam];
   try {
     const result = await dbConnPool().query(text, values);
@@ -57,7 +57,7 @@ router.post('/', async (req, res) =>
     res.status(400).send('Invalid http requets parameter');
     return;
   }
-  const text = "INSERT INTO kayttajat(nimi, email, admin) VALUES($1, $2, $3) RETURNING *";
+  const text = "INSERT INTO kayttaja (nimi, email, admin) VALUES ($1, $2, $3) RETURNING *";
   const values = [data.nimi, data.email, data.admin];
   try {
     const result = await dbConnPool().query(text, values);

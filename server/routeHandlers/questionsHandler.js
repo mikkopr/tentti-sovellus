@@ -1,5 +1,6 @@
 
 const express = require('express');
+const { DatabaseError } = require('pg');
 
 const {dbConnPool} = require('../db');
 const {addAnswerToQuestion, fetchAnswers, updateQuestion} = require('../questionFunctions');

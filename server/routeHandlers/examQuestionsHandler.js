@@ -1,5 +1,6 @@
 
 const express = require('express');
+const { DatabaseError } = require('pg');
 
 const {dbConnPool} = require('../db');
 const {addQuestionToExam, fetchExamQuestions, updateExamQuestion, removeQuestionFromExam} = require('../examQuestionsFunctions');
@@ -34,7 +35,7 @@ router.post('/tentti/:examId/kysymys', async (req, res) =>
     if (err instanceof DatabaseError) {
       // Error 23505, duplicate key, shouldn't be possible
       if (err.code == 23503) {
-        res.status(400).send('ERROR: Tenttiä tai kysymystä ei löydy: ' + err.message);
+        res.status(400).send('ERROR: Exam or question not found: ' + err.message);
         console.log('ERROR: DatabaseError', err.message);
       }
       else {
@@ -131,14 +132,17 @@ router.put('/tentti/:examId/kysymys/:questionId', async (req, res) =>
       res.status(200).send(updatedQuestion);
     }
     else {
-      res.status(400).send('ERROR: kysymystä ei löydy');
+      res.status(404).send('ERROR: annettu id puuttu päivitettävästä taulusta');
     }
   }
   catch (err) {
-    if (err instanceof DatabaseError) {
+    //TODO: Are all transaction aborts errors?
+    res.status(500).send('ERROR: Tietojen päivitys epäonnistui' + err.message);
+    console.log('ERROR: ', err.message);
+    /*if (err instanceof DatabaseError) {
       if (err.code == 23503) {
-        res.status(400).send('ERROR: Tenttiä ei löydy: ' + err.message);
-        console.log('ERROR: DatabaseError', err.message);
+        res.status(404).send('ERROR: Tenttiä ei löydy: ' + err.message);
+        console.log('ERROR: Exam id not found when updating a question:', err.message);
       }
       else {
         res.status(500).send('ERROR: Tietokanta ei kyennyt suorittamaan operaatiota');
@@ -148,7 +152,7 @@ router.put('/tentti/:examId/kysymys/:questionId', async (req, res) =>
     else {
       res.status(500).send('ERROR: ' + err.message);
       console.log('ERROR: ', err.message);
-    }
+    }*/
   }
 });
 

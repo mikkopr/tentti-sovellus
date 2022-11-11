@@ -1,5 +1,6 @@
 
 const express = require('express');
+const { DatabaseError } = require('pg');
 
 const {dbConnPool} = require('../db');
 const {assignUserToExam} = require('../examAssignmentFunctions');
@@ -30,8 +31,8 @@ router.get('/tentti/:examId', async (req, res) =>
  */
 router.post('/kayttaja/:userId/tentti/:examId', async (req, res) =>
 {
-const userId = validateReqParamId(userId);
-const examId = validateReqParamId(examId);
+const userId = validateReqParamId(req.params.userId);
+const examId = validateReqParamId(req.params.examId);
 if (userId === undefined || examId === undefined) {
   res.status(400).send('Invalid http requets parameter');
   return;
@@ -42,17 +43,21 @@ try {
 }
 catch (err) {
   if (err instanceof DatabaseError) {
-    if (err.code == 23505) {
-      res.status(400).send('ERROR: Käyttäjä on jo ilmoittautunut tenttiin: ' + err.message);
-      console.log('ERROR: DatabaseError', err.message);
+    if (err.code == 23503) {
+      res.status(404).send('ERROR: User or exam does not exist');
+      console.log('ERROR: DatabaseError: ', err.message);
+    }
+    else if (err.code == 23505) {
+      res.status(409).send('User is already assigned to the exam');
+      console.log('WARNING: Tried to insert a duplicate: ', err.message);
     }
     else {
-      res.status(500).send('ERROR: Tietokanta ei kyennyt suorittamaan operaatiota');
+      res.status(500).send('ERROR: Database is unable to fulfill the operation');
       console.log('ERROR: DatabaseError', err.message);
     }
   }
   else {
-    res.status(500).send('ERROR: ' + err.message);
+    res.status(500).send('ERROR: Server failed to process the operation');
     console.log('ERROR: ', err.message);
   }
 }
