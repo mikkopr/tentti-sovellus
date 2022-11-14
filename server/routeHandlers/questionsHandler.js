@@ -85,7 +85,7 @@ router.get('/:questionId/vastaukset', async (req, res) =>
 {
   const questionIdParam = validateReqParamId(req.params.questionId);
   if (questionIdParam === undefined) {
-    res.status(404).send('Invalid http request parameter');
+    res.status(400).send('Invalid http request parameter');
     return;
   }
   let answerRows = undefined;

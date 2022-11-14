@@ -70,10 +70,38 @@ router.post('/', async (req, res) =>
   }
 });
 
-router.put('/:userId', async (req, res) => {
+router.put('/:userId', async (req, res) => 
+{
+	const userIdParam = validateReqParamId(req.params.userId);
+  if (userIdParam === undefined) {
+    res.status(400).send('Invalid http request parameter');
+    return;
+  }
+  const data = req.body;
+  if (data === undefined || data.nimi === undefined || data.email === undefined || data.admin === undefined) {
+    res.status(400).send('Invalid http requets parameter');
+    return;
+  }
+	try {
+		const text = "UPDATE kayttaja SET nimi=$1, email=$2, admin=$3 RETURNING *";
+  	const values = [data.nimi, data.email, data.admin];
+  	const result = await pool.query(text, values);
+    if (result.rows[0] !== undefined) {
+        res.status(200).send(result.rows[0]);
+    }
+    else {
+      res.status(404).send({sender: 'application', message: 'User not found'});
+    }
+  }
+  catch (err) {
+      res.status(500).send('ERROR: ' + err.message);
+      console.log('ERROR: ', err);
+      return;
+  }
 });
 
-router.delete('/:userId', async (req, res) => {
+router.delete('/:userId', async (req, res) =>
+{
 });
 
 module.exports = router;

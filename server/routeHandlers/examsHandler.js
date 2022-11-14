@@ -95,7 +95,7 @@ router.put('/:examId', async (req, res) =>
         res.status(200).send(updatedExam);
     }
     else {
-      res.status(404).send('ERROR: Exam not found');
+      res.status(404).send({sender: 'application', message: 'Exam not found'});
     }
   }
   catch (err) {
