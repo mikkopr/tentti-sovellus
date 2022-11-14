@@ -6,13 +6,12 @@ const EditExam = (props) =>
 {
     return (
         <div className='exam'>
-            <h3>{props.exam.name}</h3>
+            <h3>{props.exam.nimi}</h3>
             <div className='kysymys-lista'>
-                {props.exam.questions.map( (question, index) => {
+                {props.exam.questions.map( (question) => {
                     return (<EditQuestion 
-                        key={index}
+                        key={question.id}
                         question={question}
-                        questionIndex={index}
                         dispatch={props.dispatch}
                     /> )})
                 }
@@ -20,8 +19,7 @@ const EditExam = (props) =>
             <div>
                 <input type='button' value='+'
                     onClick={event => props.dispatch(
-                        {type: 'ADD_QUESTION_CLICKED',
-                        payload: {}}
+                        {type: 'ADD_QUESTION_CLICKED'}
                     )}
                 />
             </div>
