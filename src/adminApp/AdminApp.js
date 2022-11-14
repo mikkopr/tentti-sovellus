@@ -8,6 +8,9 @@ import EditExam from './EditExam';
 import ExamMenu from '../ExamMenu';
 import Login from '../Login';
 import { act } from 'react-dom/test-utils';
+import { fetchQuestionsAndAnswersForExam } from '../dataFunctions/examDataFunctions';
+import ServerError from '../errors/ServerError';
+import InvalidDataError from '../errors/InvalidDataError';
 
 const answerStub = {answer: 'Vastaus', isCorrect: false};
 const questionStub = {question: 'Kysymys?', answers: [{...answerStub}]}
@@ -16,6 +19,7 @@ const examsDataStub =
 {
   user: {},
   exams: [],
+	activeExam: undefined,
   selectedExam: -1,
   isSaveRequired: false,
   failedToSave: false,
@@ -25,8 +29,9 @@ const examsDataStub =
   failedToAuthenticate: false
 };
 
-const STORAGE_KEY = 'examsData';
-const SERVER = 'http://localhost:8080';
+//const STORAGE_KEY = 'examsData';
+const SERVER = 'http://localhost:8081';
+const DATA_SERVER = 'http://localhost:8080';
 
 const AdminApp = () => 
 {
@@ -38,7 +43,7 @@ const AdminApp = () =>
     const fetchData = async () => {
       console.log("Fetching data");
       try {
-        const result = await axios(SERVER); //returns object
+        const result = await axios(DATA_SERVER + '/tentit');
         dispatch({type: 'DATA_RECEIVED', payload: result.data});
       }
       catch (error) {
@@ -51,7 +56,7 @@ const AdminApp = () =>
     }
   }, [examsState.dataFetchRequired, examsState.loggedIn]);
 
-  useEffect( () =>
+  /*useEffect( () =>
   {
     const postData = async () =>
     {
@@ -71,7 +76,7 @@ const AdminApp = () =>
     if (examsState.isSaveRequired && examsState.loggedIn) {
       postData();
     }
-  }, [examsState.isSaveRequired, examsState.loggedIn, examsState.failedToSave]);
+  }, [examsState.isSaveRequired, examsState.loggedIn, examsState.failedToSave]);*/
 
   useEffect( () =>
   {
@@ -90,6 +95,38 @@ const AdminApp = () =>
       postData();
     }
   }, [examsState.loginRequested, examsState.loggedIn]);
+
+	function handleExamSelected(id)
+	{
+		console.log(`handleExamSelected(${id})`);
+		const fetchData = async () => {
+			try {
+				const questions = await fetchQuestionsAndAnswersForExam(id);
+				dispatch({type: 'ACTIVE_EXAM_CHANGED', payload: {examId: id, questions: questions}});
+			}
+			catch (err) {
+				if (err instanceof ServerError || err instanceof InvalidDataError) {
+					//dispatch({type: 'SERVER_ERROR', payload: err});
+					dispatch({type: 'FAILED_TO_FETCH_DATA', payload: err});
+				}
+				dispatch({type: 'FAILED_TO_FETCH_DATA', payload: err});
+			}
+		}
+		if (examsState.activeExam?.id !== id) {
+			fetchData();
+		}
+	}
+
+	function handleActiveExamChanged(state, payload)
+	{
+		const stateCopy = {...state, exams: [...state.exams]};
+		const examId = payload.examId;
+		const questions = payload.questions;
+		const activeExam = state.exams.find( (item) => item.id == examId );
+		activeExam.questions = questions;
+		stateCopy.activeExam = activeExam;
+		return stateCopy;
+	}
 
   function reducer(state, action)
   {
@@ -173,8 +210,6 @@ const AdminApp = () =>
       /*case 'SAVE_REQUIRED_VALUE_CHANGED':
         console.log('SAVE_REQUIRED_VALUE_CHANGED');
         return {...state, isSaveRequired: action.payload};*/
-      case 'EXAM_SELECTED':
-        return {...state, selectedExam: action.payload};
       /*case 'INITIAL_DATA_RECEIVED':
       {
         console.log('INITIAL_DATA_RECEIVED');
@@ -185,10 +220,15 @@ const AdminApp = () =>
         stateCopy.isSaveRequired = false;
         return stateCopy;
       }*/
+			case 'ACTIVE_EXAM_CHANGED':
+				console.log('ACTIVE_EXAM_CHANGED');
+				const nextSate = handleActiveExamChanged(state, action.payload);
+        return nextSate;
       case 'DATA_RECEIVED':
       {
         console.log('DATA_RECEIVED');
-        const stateCopy = JSON.parse(JSON.stringify(action.payload));
+        //stateCopy.exams = JSON.parse(JSON.stringify(action.payload));
+        stateCopy.exams = action.payload;
         stateCopy.dataFetchRequired = false;
         stateCopy.failedToFetch = false;
         stateCopy.isSaveRequired = false;
@@ -201,6 +241,7 @@ const AdminApp = () =>
       }
       case 'FAILED_TO_FETCH_DATA':
         console.log('FAILED_TO_FETCH_DATA');
+				console.log(action.payload?.message);
         return {...state, failedToFetch: true};
       case 'DATA_SAVED':
         console.log('DATA_SAVED');
@@ -249,8 +290,8 @@ const AdminApp = () =>
       }
       {!examsState.loggedIn && <Login dispatch={dispatch}/>}
       {!examsState.loggedIn && examsState.failedToAuthenticate && <p>Käyttäjätunnus tai salasana virheellinen!</p>}
-      {examsState.loggedIn && !examsState.dataFetchRequired && <ExamMenu exams={examsState.exams} dispatch={dispatch}/>}
-      {examsState.loggedIn && examsState.selectedExam > -1 && <EditExam exam={examsState.exams[examsState.selectedExam]} dispatch={dispatch}/>}
+      {examsState.loggedIn && !examsState.dataFetchRequired && <ExamMenu exams={examsState.exams} onExamSelected={handleExamSelected}/>}
+      {examsState.loggedIn && examsState.activeExam !== undefined && <EditExam exam={examsState.activeExam} dispatch={dispatch}/>}
       {examsState.loggedIn && examsState.failedToFetch && <p>Tietojen nouto palvelimelta epäonnistui</p>}
       {examsState.loggedIn && examsState.failedToSave && <p>Tietojen tallennus palvelimelle epäonnistui</p>}
       {examsState.loggedIn && examsState.notAuthorized && <p>Ei valtuuksia</p>}
