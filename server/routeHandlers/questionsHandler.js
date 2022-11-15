@@ -4,6 +4,7 @@ const { DatabaseError } = require('pg');
 
 const {dbConnPool} = require('../db');
 const {addAnswerToQuestion, fetchAnswers, updateQuestion} = require('../questionFunctions');
+const {fetchExamIdsContainingQuestion} = require('../examQuestionsFunctions');
 const {validateReqParamId} = require('../validateFunctions');
 
 const router = express.Router();
@@ -99,6 +100,53 @@ router.get('/:questionId/vastaukset', async (req, res) =>
     return;
   }
   res.status(200).send(answerRows);
+});
+
+router.delete('/:questionId', async (req, res) =>
+{
+  const questionIdParam = validateReqParamId(req.params.questionId);
+  if (questionIdParam === undefined) {
+    res.status(400).send('Invalid http request parameter');
+    return;
+  }
+	let client = undefined;
+  try {
+		client = await pool.connect();
+		await client.query('BEGIN');
+
+		// Check if the question is linked to an exam
+		let text = "SELECT tentti_id FROM tentti_kysymys_liitos WHERE kysymys_id=$1";
+		let values = [questionId];
+		let result = await client.query(text, values);
+		if (result.length > 0) {
+			await client.query('ROLLBACK');
+			res.status(400).send('One or more exams contain the question to be deleted.');
+			return;
+		}
+
+		text = "DELETE FROM tentti_kysymys_liitos WHERE kysymys_id=$1";
+		values = [questionId];
+		await client.query(text, values);
+
+		text = "DELETE FROM vastaus WHERE kysymys_id=$1";
+		values = [questionId];
+		await client.query(text, values);
+
+		text = "DELETE FROM kysymys WHERE id=$1";
+		values = [questionId];
+		await client.query(text, values);
+
+		await client.query('COMMIT');
+		res.status(204).end();
+	}
+	catch (err) {
+    res.status(500).send('ERROR: ' + err.message);
+    console.log('Database query error:', err);
+    return;
+  }
+	finally {
+		client.release();
+	}
 });
 
 module.exports = router;

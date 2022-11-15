@@ -15,7 +15,7 @@ const updateQuestion = async (pool, questionId, data) =>
 {
   const text = "UPDATE kysymys SET teksti=$1 WHERE id=$2 RETURNING *";
   const values = [data.teksti, questionId];
-  const result = await client.query(text, values);
+  const result = await pool.query(text, values);
   return result.rows[0];
 }
 

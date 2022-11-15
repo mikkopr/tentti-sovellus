@@ -31,18 +31,13 @@ const addQuestionToExam = async (pool, examId, data) =>
  /**
   * Deletes the question from tentti_kysymys_liitos
   */
- const removeQuestionFromExam = async (pool, examId, questionId) =>
- {
-   const text = "DELETE FROM tentti_kysymys_liitos WHERE tentti_id=$1 AND kysymys_id=$2";
-   const values = [examId, questionId];
-   try {
-     const result = await pool.query(text, values);
-     return result.rows[0];
-   }
-   catch (err) {
-     throw new Error('Query error: ' + err.message);
-   }
- }
+const removeQuestionFromExam = async (pool, examId, questionId) =>
+{
+	const text = "DELETE FROM tentti_kysymys_liitos WHERE tentti_id=$1 AND kysymys_id=$2";
+	const values = [examId, questionId];
+	const result = await pool.query(text, values);
+	return result.rows[0];
+}
  
  const fetchExamQuestions = async (pool, examId) =>
  {
@@ -52,6 +47,14 @@ const addQuestionToExam = async (pool, examId, data) =>
    return result.rows;
  }
  
+const fetchExamIdsContainingQuestion = async (pool, questionId) =>
+{
+	const text = "SELECT tentti_id FROM tentti_kysymys_liitos WHERE kysymys_id=$1";
+	const values = [questionId];
+	const result = await pool.query(text, values);
+	return result.rows;
+}
+
 /**
  * Returns the updated question if successful. Returns undefined if an updated table
  * doesn't contain the given id. Otherwise throws an error.
@@ -91,5 +94,5 @@ const updateExamQuestion = async (pool, examId, questionId, data) =>
   }
 }
 
- module.exports = {addQuestionToExam, fetchExamQuestions, updateExamQuestion, removeQuestionFromExam};
+ module.exports = {addQuestionToExam, fetchExamQuestions, fetchExamIdsContainingQuestion, updateExamQuestion, removeQuestionFromExam};
  

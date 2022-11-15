@@ -102,6 +102,34 @@ router.put('/:userId', async (req, res) =>
 
 router.delete('/:userId', async (req, res) =>
 {
+	const userIdParam = validateReqParamId(req.params.userId);
+  if (userIdParam === undefined) {
+    res.status(400).send('Invalid http request parameter');
+    return;
+  }
+	let client = undefined;
+  try {
+		client = await pool.connect();
+		await client.query('BEGIN');
+		let text = "DELETE FROM tentti_suoritus WHERE kayttaja_id=$1";
+		let values = [userIdParam];
+		await client.query(text, values);
+
+		text = "DELETE FROM kayttaja WHERE id=$1";
+		await client.query(text, values);
+    
+		await client.query('COMMIT');
+    res.status(204).end();
+  }
+  catch (err) {
+		await client.query('ROLLBACK');
+    res.status(500).send('Database query failed');
+    console.log('Database query error:', err);
+    return;
+  }
+	finally {
+		client.release();
+	}
 });
 
 module.exports = router;

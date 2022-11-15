@@ -15,7 +15,8 @@ const router = express.Router();
 /**
  * Returns the assingments of the user
  */
-router.get('/kayttaja/:userId', async (req, res) => { 
+router.get('/kayttaja/:userId', async (req, res) => 
+{ 
 });
 
 /**

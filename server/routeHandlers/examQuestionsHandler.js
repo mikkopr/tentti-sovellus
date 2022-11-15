@@ -35,7 +35,7 @@ router.post('/tentti/:examId/kysymys', async (req, res) =>
     if (err instanceof DatabaseError) {
       // Error 23505, duplicate key, shouldn't be possible
       if (err.code == 23503) {
-        res.status(400).send('ERROR: Exam or question not found: ' + err.message);
+        res.status(404).send({sender: 'application', message: 'tentti does not exists'});
         console.log('ERROR: DatabaseError', err.message);
       }
       else {
@@ -76,7 +76,7 @@ router.delete('/tentti/:examId/kysymys/:questionId', async (req, res) =>
       res.status(204).end();
     }
     else {
-      res.status(404).send("WARNING: Unable to fulfill the request, tentti does not exists");
+      res.status(404).send({sender: 'application', message: 'tentti does not exists'});
     }
   }
   catch (err) {
@@ -132,7 +132,7 @@ router.put('/tentti/:examId/kysymys/:questionId', async (req, res) =>
       res.status(200).send(updatedQuestion);
     }
     else {
-      res.status(404).send('ERROR: annettu id puuttu päivitettävästä taulusta');
+			res.status(404).send({sender: 'application', message: 'id or ids not found in database tables'});
     }
   }
   catch (err) {
