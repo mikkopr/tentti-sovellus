@@ -96,24 +96,21 @@ const AdminApp = () =>
     }
   }, [examsState.loginRequested, examsState.loggedIn]);
 
-	function handleExamSelected(id)
+	async function handleExamSelected(id)
 	{
-		console.log(`handleExamSelected(${id})`);
-		const fetchData = async () => {
-			try {
+		if (examsState.activeExam?.id === id) {
+			return;
+		}
+		try {
 				const questions = await fetchQuestionsAndAnswersForExam(id);
 				dispatch({type: 'ACTIVE_EXAM_CHANGED', payload: {examId: id, questions: questions}});
-			}
-			catch (err) {
-				if (err instanceof ServerError || err instanceof InvalidDataError) {
-					//dispatch({type: 'SERVER_ERROR', payload: err});
-					dispatch({type: 'FAILED_TO_FETCH_DATA', payload: err});
-				}
+		}
+		catch (err) {
+			if (err instanceof ServerError || err instanceof InvalidDataError) {
+				//dispatch({type: 'SERVER_ERROR', payload: err});
 				dispatch({type: 'FAILED_TO_FETCH_DATA', payload: err});
 			}
-		}
-		if (examsState.activeExam?.id !== id) {
-			fetchData();
+			dispatch({type: 'FAILED_TO_FETCH_DATA', payload: err});
 		}
 	}
 
@@ -125,6 +122,49 @@ const AdminApp = () =>
 		const activeExam = state.exams.find( (item) => item.id == examId );
 		activeExam.questions = questions;
 		stateCopy.activeExam = activeExam;
+		return stateCopy;
+	}
+
+	function handleNewQuestionAddedToExam(state, question)
+	{
+		console.log('handleNewQuestionAddedToExam(...)');
+		const stateCopy = {...state, exams: [...state.exams]};
+		stateCopy.activeExam = {...state.activeExam, questions: [...state.activeExam.questions]};
+		question.answers = [];
+    stateCopy.activeExam.questions.push(question);
+		return stateCopy;
+	}
+
+	function handleAnswerAdded(state, questionId, answer)
+	{
+		console.log('handleAnswerAdded(...)');
+		const stateCopy = {...state, exams: [...state.exams]};
+		stateCopy.activeExam = {...state.activeExam, questions: [...state.activeExam.questions]};
+		const questionIndex = stateCopy.activeExam.questions.findIndex( (item) => item.id == questionId);
+		const modifiedQuestionCopy = 
+			{...stateCopy.activeExam.questions[questionIndex],
+				answers: [...stateCopy.activeExam.questions[questionIndex].answers]};
+		modifiedQuestionCopy.answers.push(answer);
+		stateCopy.activeExam.questions[questionIndex] = modifiedQuestionCopy;
+		return stateCopy;
+	}
+
+	function handleAnswerDeleted(state, questionId, answerId)
+	{
+		//TODO maybe should reload the exam
+		console.log('handleAnswerDeleted(...)');
+		const stateCopy = {...state, exams: [...state.exams]};
+		stateCopy.activeExam = {...state.activeExam, questions: [...state.activeExam.questions]};
+
+		const questionIndex = stateCopy.activeExam.questions.findIndex( (item) => item.id == questionId);
+		const answerIndex = stateCopy.activeExam.questions[questionIndex].findIndex( (item) => item.id == answerId);
+
+		const modifiedQuestionCopy = {...stateCopy.activeExam.questions[questionIndex]};
+		modifiedQuestionCopy.answers = Array.concat(
+			[...modifiedQuestionCopy.answers.slice(0, answerIndex)],
+			[...modifiedQuestionCopy.answers.slice(answerIndex + 1, modifiedQuestionCopy.answers.length)] );
+		
+		stateCopy.activeExam.questions[questionIndex] = modifiedQuestionCopy;
 		return stateCopy;
 	}
 
@@ -204,6 +244,17 @@ const AdminApp = () =>
         stateCopy.failedToSave = false;
         return stateCopy;
       }
+
+			case 'ANSWER_ADDED':
+				console.log('ANSWER_ADDED');
+				return handleAnswerAdded(state, action.payload.questionId, action.payload.answer);
+			case 'ANSWER_DELETED':
+				console.log('ANSWER_DELETED');
+				return handleAnswerDeleted(state, action.payload.questionId, action.payload.answerId);
+			case 'NEW_QUESTION_ADDED_TO_EXAM':
+				console.log('NEW_QUESTION_ADDED_TO_EXAM');
+				return handleNewQuestionAddedToExam(state, action.payload.question);
+
       /*case 'INITIALIZE_DATA':
         const copyOfState = JSON.parse(JSON.stringify(action.payload));
         return copyOfState;*/
@@ -249,11 +300,11 @@ const AdminApp = () =>
       case 'FAILED_TO_SAVE_DATA':
       {
         console.log('FAILED_TO_SAVE_DATA');
-        const responseStatus = action.payload;
+        /*const responseStatus = action.payload;
         if (responseStatus == 403)
           return {...state, isSaveRequired: true, failedToSave: true, notAuthorized: true};
         else  
-          return {...state, isSaveRequired: true, failedToSave: true};
+          return {...state, isSaveRequired: true, failedToSave: true};*/
       }
       case 'USER_CREDENTIALS_RECEIVED':
       {

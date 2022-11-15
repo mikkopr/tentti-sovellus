@@ -1,7 +1,6 @@
 
 import axios from 'axios';
 
-import ServerError from '../errors/ServerError';
 import InvalidDataError from '../errors/InvalidDataError';
 
 /**
@@ -16,18 +15,36 @@ const fetchAnswers = async (questionId) =>
 		fetchResult = await axios.get(`http://localhost:8080/kysymykset/${questionId}/vastaukset`);
 	}
 	catch (err) {
-		if (err.response.status >= 500 && err.response.status < 600) {
-			throw new ServerError('Server was unable to fulfill the request', err.response.status);
-		}
 		throw err;
 	}
-	if (fetchResult.status === 200) {
-		if (!Array.isArray(fetchResult.data)) {
+	if (fetchResult.status === 200 && !Array.isArray(fetchResult.data)) {
 			throw new InvalidDataError('Received invalid data');
-		}
-		return fetchResult.data;
 	}
-	throw new ServerError('Server was unable to fulfill the request', fetchResult.status);
+	return fetchResult.data;
 }
 
-export {fetchAnswers};
+const addAnswer = async (questionId) =>
+{
+	let fetchResult = undefined;
+	try {
+		const answerStub = {teksti: 'vastaus', oikein: false};
+		fetchResult = await axios.post(`http://localhost:8080/kysymykset/${questionId}/vastaus`, answerStub);
+		return fetchResult.data;
+	}
+	catch (err) {
+		throw err;
+	}
+}
+
+const deleteAnswer = async (answerId) =>
+{
+	try {
+		const fetchResult = await axios.delete(`http://localhost:8080/vastaukset/${answerId}`);
+		return fetchResult;
+	}
+	catch (err) {
+		throw err;
+	}
+}
+
+export {fetchAnswers, addAnswer, deleteAnswer};

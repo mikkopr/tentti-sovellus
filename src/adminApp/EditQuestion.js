@@ -1,8 +1,23 @@
 
 import EditAnswer from "./EditAnswer";
 
+import  {addAnswer} from '../dataFunctions/answerDataFunctions'
+
 const EditQuestion = (props) => {
-    return (
+  
+	async function handleAddAnswerClicked(questionId)
+	{
+		try {
+			const addedAnswer = await addAnswer(questionId);
+			props.dispatch({type: 'ANSWER_ADDED', payload: {questionId: questionId, answer: addedAnswer} });
+		}
+		catch (err) {
+			props.dispatch({type: 'FAILED_TO_SAVE_DATA', payload: err});
+			return;
+		}
+	}
+
+	return (
     <div className="kysymys">
         <div>
             <input type='textbox' className="kysymys-teksti" value={props.question.teksti}
@@ -26,10 +41,7 @@ const EditQuestion = (props) => {
         </div>
         <div className="button-row">
             <input type='button' className='add-button' value='+'
-                onClick={event => props.dispatch( 
-                    {type: 'ADD_ANSWER_CLICKED',
-                    payload: {questionId: props.question.id}} 
-                )}
+                onClick={event => handleAddAnswerClicked(props.question.id)}
             />
         </div>
     </div>
