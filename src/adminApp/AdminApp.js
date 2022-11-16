@@ -157,12 +157,12 @@ const AdminApp = () =>
 		stateCopy.activeExam = {...state.activeExam, questions: [...state.activeExam.questions]};
 
 		const questionIndex = stateCopy.activeExam.questions.findIndex( (item) => item.id == questionId);
-		const answerIndex = stateCopy.activeExam.questions[questionIndex].findIndex( (item) => item.id == answerId);
+		const answerIndex = stateCopy.activeExam.questions[questionIndex].answers.findIndex( (item) => item.id == answerId);
 
 		const modifiedQuestionCopy = {...stateCopy.activeExam.questions[questionIndex]};
-		modifiedQuestionCopy.answers = Array.concat(
-			[...modifiedQuestionCopy.answers.slice(0, answerIndex)],
-			[...modifiedQuestionCopy.answers.slice(answerIndex + 1, modifiedQuestionCopy.answers.length)] );
+		modifiedQuestionCopy.answers = modifiedQuestionCopy.answers.slice(0, answerIndex).concat(
+			modifiedQuestionCopy.answers.slice(answerIndex + 1, modifiedQuestionCopy.answers.length));
+		
 		
 		stateCopy.activeExam.questions[questionIndex] = modifiedQuestionCopy;
 		return stateCopy;

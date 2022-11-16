@@ -85,7 +85,7 @@ router.put('/:userId', async (req, res) =>
 	try {
 		const text = "UPDATE kayttaja SET nimi=$1, email=$2, admin=$3 RETURNING *";
   	const values = [data.nimi, data.email, data.admin];
-  	const result = await pool.query(text, values);
+  	const result = await dbConnPool().query(text, values);
     if (result.rows[0] !== undefined) {
         res.status(200).send(result.rows[0]);
     }
@@ -109,7 +109,7 @@ router.delete('/:userId', async (req, res) =>
   }
 	let client = undefined;
   try {
-		client = await pool.connect();
+		client = await dbConnPool().connect();
 		await client.query('BEGIN');
 		let text = "DELETE FROM tentti_suoritus WHERE kayttaja_id=$1";
 		let values = [userIdParam];
@@ -128,7 +128,7 @@ router.delete('/:userId', async (req, res) =>
     return;
   }
 	finally {
-		client.release();
+		client?.release();
 	}
 });
 

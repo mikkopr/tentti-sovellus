@@ -82,6 +82,7 @@ router.delete('/:answerId', async (req, res) =>
 		const text = "DELETE FROM vastaus WHERE id=$1";
     const values = [answerIdParam];
     await dbConnPool().query(text, values);
+		res.status(204).end();
 	}
 	catch (err) {
 		res.status(500).send('ERROR: ' + err.message);
