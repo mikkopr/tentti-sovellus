@@ -3,7 +3,7 @@ const express = require('express');
 
 const {dbConnPool} = require('../db');
 const {fetchExams, fetchExam, addExam, updateExam} = require('../examFunctions');
-const {validateReqParamId} = require('../validateFunctions');
+const {verifyToken, verifyAdminRole, validateReqParamId} = require('../validateFunctions');
 
 const router = express.Router();
 
@@ -11,7 +11,7 @@ const router = express.Router();
  * Handles /tentit
  */
 
-router.get('/', async (req, res) => 
+router.get('/', verifyToken, async (req, res) => 
 {
   let examRows = undefined;
   try {
@@ -27,7 +27,7 @@ router.get('/', async (req, res) =>
 
 //TODO regexp in parentheses does not work, node version?
 //app.get('/tentti/:examId(\d+)', async (req, res) => {
-router.get('/:examId', async (req, res) => 
+router.get('/:examId', verifyToken, async (req, res) => 
 {
   const examIdParam = validateReqParamId(req.params.examId);
   if (examIdParam == undefined) {
@@ -56,7 +56,7 @@ router.get('/:examId', async (req, res) =>
 /**
  * Adds a new exam
  */
-router.post('/', async (req, res) => 
+router.post('/', verifyToken, verifyAdminRole, async (req, res) => 
 {  
   //TODO test
   const data = req.body;
@@ -76,7 +76,7 @@ router.post('/', async (req, res) =>
   }
 });
 
-router.put('/:examId', async (req, res) =>
+router.put('/:examId', verifyToken, verifyAdminRole, async (req, res) =>
 {
   const examIdParam = validateReqParamId(req.params.examId);
   if (examIdParam === undefined) {

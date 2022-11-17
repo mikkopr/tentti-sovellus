@@ -3,9 +3,9 @@ const express = require('express');
 const { DatabaseError } = require('pg');
 
 const {dbConnPool} = require('../db');
-const {addAnswerToQuestion, fetchAnswers, updateQuestion} = require('../questionFunctions');
+const {fetchQuestions, fetchQuestion, addAnswerToQuestion, fetchAnswers, fetchAnswersWithoutCorrectness, updateQuestion} = require('../questionFunctions');
 const {fetchExamIdsContainingQuestion} = require('../examQuestionsFunctions');
-const {validateReqParamId} = require('../validateFunctions');
+const {verifyToken, verifyAdminRole, validateReqParamId} = require('../validateFunctions');
 
 const router = express.Router();
 
@@ -13,12 +13,48 @@ const router = express.Router();
  * Handles /kysymykset
  */
 
-//TODO get('/:questionId')
+router.get('/', verifyToken, async (req, res) => 
+{
+	try {
+		const questionRows = await fetchQuestions(dbConnPool());
+		res.status(200).send(questionRows);
+	}
+	catch (err) {
+		res.status(500).send('Database query failed');
+		console.log('Database query error:', err);
+		return;
+	}
+});
+
+router.get('/:questionId', verifyToken, async (req, res) => 
+{
+	const questionIdParam = validateReqParamId(req.params.questionId);
+  if (questionIdParam == undefined) {
+    res.status(400).send('Invalid http requets parameter');
+    return;
+  }
+  let questionRow = undefined;
+  try {
+    const questionIdNr = new Number(questionIdParam);
+    questionRow = await fetchQuestion(dbConnPool(), questionIdNr);
+    if (questionRow !== undefined) {
+      res.status(200).send(questionRow);
+    }
+    else {
+      res.status(204).end();
+    }
+  }
+  catch (err) {
+    res.status(500).send('Database query failed');
+    console.log('Database query error:', err);
+    return;
+  }
+});
 
 /**
  * Updates the question. Updates only the attributes that aren't related to a particular exam.
  */
-router.put('/:questionId', async (req, res) => 
+router.put('/:questionId', verifyToken, verifyAdminRole, async (req, res) => 
 {
   const questionIdParam = validateReqParamId(req.params.questionId);
   if (questionIdParam === undefined) {
@@ -49,7 +85,7 @@ router.put('/:questionId', async (req, res) =>
 /**
  * Adds a new answer to the question
  */
- router.post('/:questionId/vastaus', async (req, res) => 
+ router.post('/:questionId/vastaus', verifyToken, verifyAdminRole, async (req, res) => 
  {
    const questionIdParam = validateReqParamId(req.params.questionId);
    if (questionIdParam === undefined) {
@@ -82,27 +118,31 @@ router.put('/:questionId', async (req, res) =>
    }
  });
 
-router.get('/:questionId/vastaukset', async (req, res) =>
+router.get('/:questionId/vastaukset', verifyToken, async (req, res) =>
 {
   const questionIdParam = validateReqParamId(req.params.questionId);
   if (questionIdParam === undefined) {
     res.status(400).send('Invalid http request parameter');
     return;
   }
+	const includeCorrectness = (req.query.oikeat && req.decodedToken.role == 'admin') ? true : false;
   let answerRows = undefined;
   try {
     const questionIdNr = new Number(questionIdParam);
-    answerRows = await fetchAnswers(dbConnPool(), questionIdNr);
+		if (includeCorrectness)
+    	answerRows = await fetchAnswers(dbConnPool(), questionIdNr);
+		else
+			answerRows = await fetchAnswersWithoutCorrectness(dbConnPool(), questionIdNr);
+		res.status(200).send(answerRows);
   }
   catch (err) {
     res.status(500).send('ERROR: ' + err.message);
     console.log('Database query error:', err);
     return;
   }
-  res.status(200).send(answerRows);
 });
 
-router.delete('/:questionId', async (req, res) =>
+router.delete('/:questionId', verifyToken, verifyAdminRole, async (req, res) =>
 {
   const questionIdParam = validateReqParamId(req.params.questionId);
   if (questionIdParam === undefined) {

@@ -36,7 +36,7 @@ router.get('/:userId', verifyToken, async (req, res) =>
 		res.status(403).send('Ei käyttöoikeutta');
 		return;
 	}
-  const text = "SELECT (id, nimi, email, admin) FROM kayttaja WHERE id=$1";
+  const text = "SELECT id, nimi, email, admin FROM kayttaja WHERE id=$1";
   const values = [userIdParam];
   try {
     const result = await dbConnPool().query(text, values);

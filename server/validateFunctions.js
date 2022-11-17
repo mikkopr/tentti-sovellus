@@ -28,7 +28,8 @@ const verifyToken = (req, res, next) =>
 		decodedToken = jwt.verify(token, "tokensecret"); //TODO
 	}
 	catch (err) {
-		res.status(403).send("ERROR: Invalid token");
+		//If expired err.name == TokenExpiredError
+		res.status(401).send("ERROR: Invalid token");
 		return;
 	}
 	req.decodedToken = decodedToken;

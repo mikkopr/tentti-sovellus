@@ -3,6 +3,20 @@
  * Question
  */
 
+const fetchQuestions = async (pool) =>
+{
+  const result = await pool.query("SELECT * FROM kysymys");
+  return result.rows;
+}
+
+const fetchQuestion = async (pool, id) =>
+{
+  const text = "SELECT * FROM kysymys WHERE id=$1";
+  const values = [id];
+  const result = await pool.query(text, values);
+  return result.rows[0];
+};
+
 const addQuestion = async (pool, questionText) =>
 {
   const text = "INSERT INTO kysymys (teksti) VALUES($1) RETURNING *";
@@ -35,4 +49,12 @@ const fetchAnswers = async (pool, questionId) =>
   return result.rows;
 }
 
-module.exports = {addQuestion, addAnswerToQuestion, fetchAnswers, updateQuestion};
+const fetchAnswersWithoutCorrectness = async (pool, questionId) =>
+{
+  const text = "SELECT id, teksti, kysymys_id FROM vastaus WHERE kysymys_id = $1";
+  const values = [questionId];
+  const result = await pool.query(text, values);
+  return result.rows;
+}
+
+module.exports = {fetchQuestions, fetchQuestion, addQuestion, addAnswerToQuestion, fetchAnswers, fetchAnswersWithoutCorrectness, updateQuestion};
