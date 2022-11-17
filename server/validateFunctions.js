@@ -65,7 +65,7 @@ const validateRegistrationEmailAndPassword = async (req, res, next) =>
     res.status(500).send('ERROR: ' + err.message);
     console.log('ERROR: ', err.message);
     return;
-  }	
+  }
 	next();
 }
 
