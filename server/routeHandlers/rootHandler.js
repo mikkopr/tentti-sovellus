@@ -13,6 +13,11 @@ router.post("/login", async (req, res) =>
 {
 	const receivedPassword = req.body.password;
 	const receivedEmail = req.body.email;
+
+	if (receivedPassword === undefined || receivedEmail === undefined) {
+		res.status(400).send("Tunnus ja salasana vaaditaan");
+	}
+
   let existingUser = undefined;
 	let passwordMatch = false;
   try {
@@ -23,7 +28,10 @@ router.post("/login", async (req, res) =>
 			password: result.rows[0]?.password,
 			admin: result.rows[0]?.admin
 		};
-		passwordMatch = await bcrypt.compare(receivedPassword, existingUser.password);
+		//If user found verify password
+		if (existingUser.id && existingUser.password) {
+			passwordMatch = await bcrypt.compare(receivedPassword, existingUser.password);
+		}
   }
 	catch (err) {
     console.log('ERROR: Authentication failed in /login: ', err.message);
