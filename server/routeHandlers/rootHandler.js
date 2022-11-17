@@ -16,6 +16,7 @@ router.post("/login", async (req, res) =>
 
 	if (receivedPassword === undefined || receivedEmail === undefined) {
 		res.status(400).send("Tunnus ja salasana vaaditaan");
+		return;
 	}
 
   let existingUser = undefined;
@@ -54,6 +55,7 @@ router.post("/login", async (req, res) =>
 	catch (err) {
     console.log('ERROR: Authentication failed in /login: ', err.message);
     res.status(500).send('ERROR: authentication failed.');
+		return;
   }
  
 	res.status(200).send(
