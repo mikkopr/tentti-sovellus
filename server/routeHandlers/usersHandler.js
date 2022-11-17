@@ -12,7 +12,7 @@ const router = express.Router();
 
 router.get('/', verifyToken, verifyAdminRole, async (req, res) => 
 {
-  const text = "SELECT * FROM kayttaja ORDER BY id ASC";
+  const text = "SELECT * FROM kayttaja ORDER BY nimi ASC";
   try {
     const result = await dbConnPool().query(text);
     res.status(200).send(result?.rows);
@@ -24,14 +24,19 @@ router.get('/', verifyToken, verifyAdminRole, async (req, res) =>
   }
 });
 
-router.get('/:userId', async (req, res) => 
+router.get('/:userId', verifyToken, async (req, res) => 
 {
   const userIdParam = validateReqParamId(req.params.userId);
   if (userIdParam === undefined) {
     res.status(400).send('Invalid http request parameter');
     return;
   }
-  const text = "SELECT * FROM kayttaja WHERE id=$1";
+	//Admin role required to edit other users' data
+	if (userIdParam != req.decodedToken.userId && req.decodedToken.role != 'admin') {
+		res.status(403).send('Ei käyttöoikeutta');
+		return;
+	}
+  const text = "SELECT (id, nimi, email, admin) FROM kayttaja WHERE id=$1";
   const values = [userIdParam];
   try {
     const result = await dbConnPool().query(text, values);
@@ -50,7 +55,7 @@ router.get('/:userId', async (req, res) =>
   }
 });
 
-router.post('/', async (req, res) => 
+router.post('/', verifyToken, verifyAdminRole, async (req, res) => 
 {
   const data = req.body;
   if (data === undefined || data.nimi === undefined || data.email === undefined || data.admin === undefined) {
@@ -70,7 +75,7 @@ router.post('/', async (req, res) =>
   }
 });
 
-router.put('/:userId', async (req, res) => 
+router.put('/:userId', verifyToken, async (req, res) => 
 {
 	const userIdParam = validateReqParamId(req.params.userId);
   if (userIdParam === undefined) {
@@ -82,6 +87,15 @@ router.put('/:userId', async (req, res) =>
     res.status(400).send('Invalid http requets parameter');
     return;
   }
+	//Admin role required to edit other users' data
+	if (userIdParam != req.decodedToken.userId && req.decodedToken.role != 'admin') {
+		res.status(403).send('Ei käyttöoikeutta');
+		return;
+	}
+	//No self promotes
+	if (req.decodedToken.role != 'admin') {
+		data.admin = false;
+	}
 	try {
 		const text = "UPDATE kayttaja SET nimi=$1, admin=$2 WHERE id=$3 RETURNING *";
   	const values = [data.nimi, data.admin, userIdParam];
@@ -100,7 +114,7 @@ router.put('/:userId', async (req, res) =>
   }
 });
 
-router.delete('/:userId', async (req, res) =>
+router.delete('/:userId', verifyToken, verifyAdminRole, async (req, res) =>
 {
 	const userIdParam = validateReqParamId(req.params.userId);
   if (userIdParam === undefined) {
