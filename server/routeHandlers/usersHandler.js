@@ -2,7 +2,7 @@
 const express = require('express');
 
 const {dbConnPool} = require('../db');
-const {validateReqParamId} = require('../validateFunctions');
+const {verifyToken, verifyAdminRole, validateReqParamId} = require('../validateFunctions');
 
 const router = express.Router();
 
@@ -10,7 +10,7 @@ const router = express.Router();
  * Handles /kayttajat
  */
 
-router.get('/', async (req, res) => 
+router.get('/', verifyToken, verifyAdminRole, async (req, res) => 
 {
   const text = "SELECT * FROM kayttaja ORDER BY id ASC";
   try {
@@ -83,8 +83,8 @@ router.put('/:userId', async (req, res) =>
     return;
   }
 	try {
-		const text = "UPDATE kayttaja SET nimi=$1, email=$2, admin=$3 RETURNING *";
-  	const values = [data.nimi, data.email, data.admin];
+		const text = "UPDATE kayttaja SET nimi=$1, admin=$2 WHERE id=$3 RETURNING *";
+  	const values = [data.nimi, data.admin, userIdParam];
   	const result = await dbConnPool().query(text, values);
     if (result.rows[0] !== undefined) {
         res.status(200).send(result.rows[0]);
