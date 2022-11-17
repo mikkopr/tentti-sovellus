@@ -4,7 +4,7 @@ const { DatabaseError } = require('pg');
 
 const {dbConnPool} = require('../db');
 const {addQuestionToExam, fetchExamQuestions, updateExamQuestion, removeQuestionFromExam} = require('../examQuestionsFunctions');
-const {validateReqParamId} = require('../validateFunctions');
+const {validateReqParamId, verifyToken, verifyAdminRole} = require('../validateFunctions');
 
 const router = express.Router();
 
@@ -15,7 +15,7 @@ const router = express.Router();
 /**
  * Add a new question to the exam
  */
-router.post('/tentti/:examId/kysymys', async (req, res) => 
+router.post('/tentti/:examId/kysymys', verifyToken, verifyAdminRole, async (req, res) => 
 {
   const examIdParam = validateReqParamId(req.params.examId);
   if (examIdParam === undefined) {
@@ -53,7 +53,7 @@ router.post('/tentti/:examId/kysymys', async (req, res) =>
 /**
 * Adds the existing question to the exam
 */
-router.post('/tentti/:examId/kysymys/:questionId', async (req, res) => 
+router.post('/tentti/:examId/kysymys/:questionId', verifyToken, verifyAdminRole, async (req, res) => 
 {
   console.log('NOT IMPLEMENTED');
   res.status(200).send('NOT IMPLEMENTED');
@@ -62,7 +62,7 @@ router.post('/tentti/:examId/kysymys/:questionId', async (req, res) =>
 /**
 * Removes the question from the exam. Doesn't delete the question in kysymys table.
 */
-router.delete('/tentti/:examId/kysymys/:questionId', async (req, res) =>
+router.delete('/tentti/:examId/kysymys/:questionId', verifyToken, verifyAdminRole, async (req, res) =>
 {
   const examIdParam = validateReqParamId(req.params.examId);
   const questionIdParam = validateReqParamId(req.params.questionId);
@@ -90,7 +90,7 @@ router.delete('/tentti/:examId/kysymys/:questionId', async (req, res) =>
 * Return questions related to the exam and all data associated with a particular question in the exam,
 * such as question number and points.
 */
-router.get('/tentti/:examId', async (req, res) => 
+router.get('/tentti/:examId', verifyToken, async (req, res) => 
 {
   const examIdParam = validateReqParamId(req.params.examId);
   if (examIdParam === undefined) {
@@ -113,7 +113,7 @@ router.get('/tentti/:examId', async (req, res) =>
 /**
 * Updates the question attached to the exam. Doesn't create a new question if doesn't exist.
 */
-router.put('/tentti/:examId/kysymys/:questionId', async (req, res) => 
+router.put('/tentti/:examId/kysymys/:questionId', verifyToken, verifyAdminRole, async (req, res) => 
 {
   const examIdParam = validateReqParamId(req.params.examId);
   const questionIdParam = validateReqParamId(req.params.questionId);

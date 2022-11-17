@@ -2,7 +2,7 @@
 const express = require('express');
 
 const {dbConnPool} = require('../db');
-const {validateReqParamId} = require('../validateFunctions');
+const {verifyToken, verifyAdminRole, validateReqParamId} = require('../validateFunctions');
 
 const router = express.Router();
 
@@ -10,14 +10,19 @@ const router = express.Router();
  * Handles /vastaukset
  */
 
-router.get('/:answerId', async (req, res) => 
+router.get('/:answerId', verifyToken, async (req, res) => 
 {
 	const answerIdParam = validateReqParamId(req.params.answerId);
 	if (answerIdParam === undefined) {
 		res.status(400).send('Invalid http request parameter');
 		return;
 	}
-	const text = "SELECT * FROM vastaus WHERE id=$1";
+	const includeCorrectness = (req.query.oikeat && req.decodedToken.role == 'admin') ? true : false;
+	let text = '';
+	if (includeCorrectness)
+		text = "SELECT * FROM vastaus WHERE id=$1";
+	else
+		text = "SELECT id, teksti, kysymys_id FROM vastaus WHERE id = $1";
 	const values = [answerIdParam];
 	try {
 		const result = await dbConnPool().query(text, values);
@@ -39,7 +44,7 @@ router.get('/:answerId', async (req, res) =>
 /**
  * Updates the answer. Doesn't create a new answer if doesn't exist.
  */
-router.put('/:answerId', async (req, res) => 
+router.put('/:answerId', verifyToken, verifyAdminRole, async (req, res) => 
 {
   const answerIdParam = validateReqParamId(req.params.answerId);
   if (answerIdParam === undefined) {
@@ -71,7 +76,7 @@ router.put('/:answerId', async (req, res) =>
   }
 });
 
-router.delete('/:answerId', async (req, res) => 
+router.delete('/:answerId', verifyToken, verifyAdminRole, async (req, res) => 
 {
 	const answerIdParam = validateReqParamId(req.params.answerId);
   if (answerIdParam === undefined) {
