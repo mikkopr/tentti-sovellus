@@ -9,6 +9,11 @@ const validators = require('../validateFunctions');
 
 const router = express.Router();
 
+router.get('/', async (req, res) => {
+	console.log('TEST');
+	res.status(200).send('TEST');
+});
+
 router.post("/login", async (req, res) =>
 {
 	const receivedPassword = req.body.password;
@@ -112,6 +117,33 @@ router.post("/register", validators.validateRegistrationEmailAndPassword, async 
 			email: newUser.email,
 			token: token
 		});
+});
+
+router.get('/timestamptest', async (req, res) => {
+	try {
+		let testDate = new Date('2022-11-19T10:41:37.977Z');
+		console.log('testDate: ', testDate);
+		console.log('testDate.toLocaleTimeString(): ', testDate.toLocaleTimeString());
+		console.log('testDate.toISOString(): ', testDate.toISOString());
+		console.log('testDate.toDateString(): ', testDate.toDateString());
+
+		console.log('Timezone: ', process.env.TZ);
+		//process.env.TZ = 'Europe/Helsinki';
+		//console.log('Timezone: ', process.env.TZ);
+		const createTableText = "CREATE TEMP TABLE dates(date_col DATE, timestamp_col TIMESTAMP, timestamptz_col TIMESTAMPTZ);"
+		await db.dbConnPool().query(createTableText)
+		// insert the current time into it
+		const now = new Date()
+		const insertText = 'INSERT INTO dates(date_col, timestamp_col, timestamptz_col) VALUES ($1, $2, $3)'
+		await db.dbConnPool().query(insertText, [now, now, now])
+		const result = await db.dbConnPool().query('SELECT * FROM dates')
+		console.log(result.rows);
+		res.status(200).send(result.rows);
+	}
+	catch (err) {
+		console.log(err.message);
+		res.status(500).send(err.message);
+	}
 });
 
 module.exports = router;

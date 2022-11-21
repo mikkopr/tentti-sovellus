@@ -38,11 +38,11 @@ const fetchExams = async (pool) =>
   }
 };
 
-const updateExam = async (pool) =>
+const updateExam = async (pool, examId, data) =>
 {
   //Without returning clause returns the count of the upfated rows
-  const text = "UPDATE tentti SET nimi=$1, kuvaus=$2, pvm=$3 RETURNING *";
-  const values = [data.nimi, data.kuvaus, new Date(data.pvm)];
+  const text = "UPDATE tentti SET nimi=$1, kuvaus=$2, pvm=$3 WHERE id=$4 RETURNING *";
+  const values = [data.nimi, data.kuvaus, new Date(data.pvm), examId];
   const result = await pool.query(text, values);
   return result.rows[0];
 }
