@@ -5,7 +5,8 @@ const { DatabaseError } = require('pg');
 const {dbConnPool} = require('../db');
 const {fetchQuestions, fetchQuestion, addAnswerToQuestion, fetchAnswers, fetchAnswersWithoutCorrectness, updateQuestion} = require('../questionFunctions');
 const {fetchExamIdsContainingQuestion} = require('../examQuestionsFunctions');
-const {verifyToken, verifyAdminRole, validateReqParamId} = require('../validateFunctions');
+const {verifyToken, verifyAdminRole, validateReqParamId, userInRole} = require('../validateFunctions');
+const roles = require('../roles');
 
 const router = express.Router();
 
@@ -125,9 +126,9 @@ router.get('/:questionId/vastaukset', verifyToken, async (req, res) =>
     res.status(400).send('Invalid http request parameter');
     return;
   }
-	const includeCorrectness = (req.query.oikeat && req.decodedToken.role == 'admin') ? true : false;
-  let answerRows = undefined;
-  try {
+	try {
+		const includeCorrectness = (req.query.oikeat && await userInRole(req.decodedToken, roles.roles().admin)) ? true : false;
+  	let answerRows = undefined;
     const questionIdNr = new Number(questionIdParam);
 		if (includeCorrectness)
     	answerRows = await fetchAnswers(dbConnPool(), questionIdNr);

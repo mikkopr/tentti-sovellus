@@ -2,7 +2,8 @@
 const express = require('express');
 
 const {dbConnPool} = require('../db');
-const {verifyToken, verifyAdminRole, validateReqParamId} = require('../validateFunctions');
+const {verifyToken, verifyAdminRole, validateReqParamId, userInRole} = require('../validateFunctions');
+const roles = require('../roles');
 
 const router = express.Router();
 
@@ -17,14 +18,15 @@ router.get('/:answerId', verifyToken, async (req, res) =>
 		res.status(400).send('Invalid http request parameter');
 		return;
 	}
-	const includeCorrectness = (req.query.oikeat && req.decodedToken.role == 'admin') ? true : false;
-	let text = '';
-	if (includeCorrectness)
-		text = "SELECT * FROM vastaus WHERE id=$1";
-	else
-		text = "SELECT id, teksti, kysymys_id FROM vastaus WHERE id = $1";
-	const values = [answerIdParam];
 	try {
+		const includeCorrectness = (req.query.oikeat && await userInRole(req.decodedToken, roles.roles().admin)) ? true : false;
+		let text = '';
+		if (includeCorrectness)
+			text = "SELECT * FROM vastaus WHERE id=$1";
+		else
+			text = "SELECT id, teksti, kysymys_id FROM vastaus WHERE id = $1";
+		const values = [answerIdParam];
+	
 		const result = await dbConnPool().query(text, values);
 		if (result?.rows !== undefined) {
 			res.status(200).send(result.rows[0]);

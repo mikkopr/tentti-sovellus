@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 
 const db = require('../db');
 const validators = require('../validateFunctions');
+const roles = require('../roles');
 
 const router = express.Router();
 
@@ -50,11 +51,12 @@ router.post("/login", async (req, res) =>
   }
   let token;
   try {
-		const role = existingUser.admin ? 'admin' : 'user';
+		//TODO create a roles table and query the roles of the user
+		const role = existingUser.admin ? roles.roles().admin : roles.roles().user;
     token = jwt.sign(
       {userId: existingUser.id, email: existingUser.email, role: role},
       'tokensecret', //TODO dotenv
-      {expiresIn: '1h'}
+      {expiresIn: '2h'}
     );
   }
 	catch (err) {
@@ -102,7 +104,7 @@ router.post("/register", validators.validateRegistrationEmailAndPassword, async 
     token = jwt.sign(
       {	userId: newUser.id,
 				email: newUser.email,
-				role: 'user' //TODO
+				role: roles.roles().user //Initially in user role
 			},
       'tokensecret', //TODO
       { expiresIn: '1h' }
@@ -138,6 +140,10 @@ router.get('/timestamptest', async (req, res) => {
 		await db.dbConnPool().query(insertText, [now, now, now])
 		const result = await db.dbConnPool().query('SELECT * FROM dates')
 		console.log(result.rows);
+
+		let timestampzResult = await db.dbConnPool().query("SELECT current_timestamp(0)");
+		
+
 		res.status(200).send(result.rows);
 	}
 	catch (err) {

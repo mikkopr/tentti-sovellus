@@ -3,6 +3,7 @@ const express = require('express');
 
 const {dbConnPool} = require('../db');
 const {verifyToken, verifyAdminRole, validateReqParamId} = require('../validateFunctions');
+const roles = require('../roles');
 
 const router = express.Router();
 
@@ -31,14 +32,14 @@ router.get('/:userId', verifyToken, async (req, res) =>
     res.status(400).send('Invalid http request parameter');
     return;
   }
-	//Admin role required to edit other users' data
-	if (userIdParam != req.decodedToken.userId && req.decodedToken.role != 'admin') {
-		res.status(403).send('Ei käyttöoikeutta');
-		return;
-	}
-  const text = "SELECT id, nimi, email, admin FROM kayttaja WHERE id=$1";
-  const values = [userIdParam];
-  try {
+	try {
+		//Admin role required to edit other users' data
+		if (userIdParam != req.decodedToken.userId && !(await userInRole(req.decodedToken, roles.roles().admin))) {
+			res.status(403).send('Ei käyttöoikeutta');
+			return;
+		}
+		const text = "SELECT id, nimi, email, admin FROM kayttaja WHERE id=$1";
+		const values = [userIdParam];
     const result = await dbConnPool().query(text, values);
     if (result?.rows !== undefined) {
       res.status(200).send(result.rows[0]);
@@ -88,15 +89,16 @@ router.put('/:userId', verifyToken, async (req, res) =>
     return;
   }
 	//Admin role required to edit other users' data
-	if (userIdParam != req.decodedToken.userId && req.decodedToken.role != 'admin') {
-		res.status(403).send('Ei käyttöoikeutta');
-		return;
-	}
-	//No self promotes
-	if (req.decodedToken.role != 'admin') {
-		data.admin = false;
-	}
 	try {
+		if (userIdParam != req.decodedToken.userId && !(await userInRole(req.decodedToken, roles.roles().admin))) {
+			res.status(403).send('Ei käyttöoikeutta');
+			return;
+		}
+		//No self promotes
+		if (data.admin == true && !(await userInRole(req.decodedToken, roles.roles().admin))) {
+			res.status(403).send('Ei käyttöoikeutta');
+			return;
+		}
 		const text = "UPDATE kayttaja SET nimi=$1, admin=$2 WHERE id=$3 RETURNING *";
   	const values = [data.nimi, data.admin, userIdParam];
   	const result = await dbConnPool().query(text, values);

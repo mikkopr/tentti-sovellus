@@ -1,18 +1,62 @@
 
 const {dbConnPool} = require('./db');
 const jwt = require('jsonwebtoken');
+const roles = require('./roles');
 
-const verifyAdminRole = (req, res, next) =>
+
+/**
+ * Returns true if the user having the email is in the role.
+ */
+const userInRole = async (decodedToken, role) =>
+{
+	try {
+		//Check first from the token
+		if (decodedToken?.role != role) {
+			return false;
+		}
+		//Currently no role tables, checks only admin boolean
+		const result = await dbConnPool().query(
+			"SELECT admin FROM kayttaja WHERE email=$1", [decodedToken.email]);
+		if (result.rows[0]?.admin)
+			return false;
+		else
+			return true;
+	}
+	catch (err) {
+    console.log('ERROR: Failed to verify role: ' + role + ': ' + err.message);
+    throw err;
+	}
+}
+
+const verifyAdminRole = async (req, res, next) =>
 {
 	if (!req.decodedToken) {
 		res.status(403).send('ERROR: Token was not provided.');
 		return;
 	}
-	if (req.decodedToken.role !== 'admin') {
+	if (req.decodedToken.role != roles.roles().admin) {
 		res.status(403).send('Ei käyttöoikeutta');
 		return;
 	}
-	next();
+	try {
+		//Admin role is verified also from the database. Other roles may be verified from the token, if the role
+		//change must not have to be immediate
+		const result = await dbConnPool().query(
+			"SELECT admin FROM kayttaja WHERE email=$1", [req.decodedToken.email]);
+		if (result.rows[0]?.admin) {
+			next();
+			return;
+		}
+		else {
+			res.status(403).send('Ei käyttöoikeutta');
+			return;
+		}
+	}
+	catch (err) {
+		res.status(500).send('ERROR: Failed to verify admin role');
+    console.log('ERROR: Failed to verify admin role: ', err.message);
+    return;
+	}
 }
 
 const verifyToken = (req, res, next) =>
@@ -110,4 +154,4 @@ const validateQueryValueNumber = (value, min, max) =>
   return (num >= min && num <= max) ? value : undefined;
 }*/
 
-module.exports = {verifyToken, verifyAdminRole, validateRegistrationEmailAndPassword, validateReqParamId};
+module.exports = {verifyToken, verifyAdminRole, validateRegistrationEmailAndPassword, validateReqParamId, userInRole};
