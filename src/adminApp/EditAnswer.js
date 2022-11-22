@@ -8,7 +8,7 @@ const EditAnswer = (props) =>
 	{
 		try {
 			await deleteAnswer(answer.id);
-			props.dispatch({type: 'ANSWER_DELETED', payload: {answerId: answer.id, questionId: answer.kysymys_id} });
+			props.dispatch({type: 'ANSWER_DELETED', payload: {answerId: answer.answerId, questionId: props.questionId} });
 		}
 		catch (err) {
 			props.dispatch({type: 'FAILED_TO_SAVE_DATA', payload: err});
@@ -20,24 +20,24 @@ const EditAnswer = (props) =>
     <div className='edit-answer'>
         <div>
             <input type='checkbox' 
-                checked={props.answer.oikein}
+                checked={props.answer.correct}
                 onChange={event => 
                     props.dispatch(
                         {type: 'ANSWER_CHECKED_STATE_CHANGED',
                         payload: {value: event.target.checked, 
-                            questionId: props.answer.kysymys_id,
-                            answerId: props.answer.id}
+                            questionId: props.questionId,
+                            answerId: props.answer.answerId}
                         }
                     )
                 }
             />
         </div>
         <div>
-            <input type='textbox' value={props.answer.teksti}
+            <input type='textbox' value={props.answer.text}
                 onChange={event => props.dispatch(
                     {type:'ANSWER_VALUE_CHANGED',
                     payload: {value: event.target.value,
-											questionId: props.answer.kysymys_id, answerId: props.answer.id}
+											questionId: props.questionId, answerId: props.answer.answerId}
                     }
                 )}
             />

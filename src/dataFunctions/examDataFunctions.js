@@ -1,11 +1,37 @@
 
 import axios from 'axios';
 
+import * as axiosConfig from '../axiosConfig';
+
 import ServerError from '../errors/ServerError';
 import InvalidDataError from '../errors/InvalidDataError';
 import BadRequestError from '../errors/BadRequestError'
 import ConnectionError from '../errors/ConnectionError'
 import {fetchAnswers} from './answerDataFunctions';
+
+
+const fetchQuestionAndAnswers = async (questionId) =>
+{
+	let fetchResult = undefined;
+	try {
+		fetchResult = await axios.get(`http://localhost:8080/kysymykset/${questionId}/vastaukset?oikeat=true`, axiosConfig.getConfig());
+	}
+	catch (err) {
+		throw err;
+	}
+	if (fetchResult.status === 200 && !Array.isArray(fetchResult.data)) {
+		throw new InvalidDataError('Received invalid data');
+	}
+	if (fetchResult.data?.length == 0) {
+		return undefined;
+	}
+	let question = {questionId: fetchResult.data.id, text: fetchResult.data.text, number: fetchResult.data.number, points: fetchResult.data.points, answers: []};
+	let result = fetchResult.data.reduce((acc, curr) => {
+			acc.answers.push({answerId: curr.answer_id, text: curr.answer_text, correct: curr.answer_correct});
+			return acc;
+		}, question);
+	return result;
+}
 
 const fetchQuestionsAndAnswersForExam = async (id) =>
 {
@@ -30,13 +56,14 @@ const fetchQuestionsAndAnswersForExam = async (id) =>
 /**
  * Fetches the questions of the exam.
  * 
- * Return an array of questions
+ * Return an array of questions.
+ * Each question has properties: id, text, number, points
  */
 const fetchQuestionsForExam = async (id) =>
 {
 	let fetchResult = undefined;
 	try {
-		fetchResult = await axios.get('http://localhost:8080/tenttikysymykset/tentti/' + id);
+		fetchResult = await axios.get('http://localhost:8080/tenttikysymykset/tentti/' + id, axiosConfig.getConfig());
 	}
 	catch (err) {
 		throw err;
@@ -51,7 +78,7 @@ const updateExam = async (exam) =>
 {
 	let fetchResult = undefined;
 	try {
-		fetchResult = await axios.put('http://localhost:8080/tentit/' + exam.id);
+		fetchResult = await axios.put('http://localhost:8080/tentit/' + exam.id, axiosConfig.getConfig());
 	}
 	catch (err) {
 		throw err;
@@ -59,12 +86,15 @@ const updateExam = async (exam) =>
 	return fetchResult.data;
 }
 
+/**
+ * Returns the created question, question number and points if succesful.
+ */
 const addNewQuestionToExam = async (examId) =>
 {
 	let fetchResult = undefined;
 	try {
-		const questionStub = {teksti: 'kysymys', kysymys_numero: 1, pisteet: 0};
-		fetchResult = await axios.post(`http://localhost:8080/tenttikysymykset/tentti/${examId}/kysymys`, questionStub);
+		const questionStub = {text: 'kysymys', number: 1, points: 0};
+		fetchResult = await axios.post(`http://localhost:8080/tenttikysymykset/tentti/${examId}/kysymys`, questionStub, axiosConfig.getConfig());
 	}
 	catch (err) {
 		throw err;
@@ -97,4 +127,4 @@ const addNewQuestionToExam = async (examId) =>
 	throw new ServerError('Server was unable to fulfill the request', fetchResult.status);
 }*/
 
-export {fetchQuestionsForExam, fetchQuestionsAndAnswersForExam, updateExam, addNewQuestionToExam};
+export {fetchQuestionAndAnswers, fetchQuestionsForExam, fetchQuestionsAndAnswersForExam, updateExam, addNewQuestionToExam};

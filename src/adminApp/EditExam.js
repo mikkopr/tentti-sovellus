@@ -7,10 +7,11 @@ const EditExam = (props) =>
 {
 	async function handleAddQuestionClicked(examId)
 	{
-		let addedQuestion = undefined;
+		let addedQuestionData = undefined;
 		try {
-			addedQuestion = await addNewQuestionToExam(examId);
-			props.dispatch({type: 'NEW_QUESTION_ADDED_TO_EXAM', payload: {examId: examId, question: addedQuestion} });
+			addedQuestionData = await addNewQuestionToExam(examId);
+			props.dispatch({type: 'NEW_QUESTION_ADDED_TO_EXAM', 
+				payload: {examId: examId, questionId: addedQuestionData.question.id, number: addedQuestionData.number, points: addedQuestionData.points} });
 		}
 		catch (err) {
 			props.dispatch({type: 'FAILED_TO_SAVE_DATA', payload: err});
@@ -22,10 +23,10 @@ const EditExam = (props) =>
 		<div className='exam'>
 			<h3>{props.exam.nimi}</h3>
 			<div className='kysymys-lista'>
-				{props.exam.questions.map( (question) => {
-					return (<EditQuestion 
-						key={question.id}
-						question={question}
+				{props.exam.questionList.map( (item) => {
+					return (<EditQuestion
+						key={item.questionId}
+						questionId={item.questionId}
 						dispatch={props.dispatch}
 						/> )
 					})

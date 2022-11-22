@@ -9,7 +9,7 @@ import '../App.css';
 import EditExam from './EditExam';
 import ExamMenu from '../ExamMenu';
 import Login from '../Login';
-import { fetchQuestionsAndAnswersForExam } from '../dataFunctions/examDataFunctions';
+import { fetchQuestionsForExam } from '../dataFunctions/examDataFunctions';
 import ServerError from '../errors/ServerError';
 import InvalidDataError from '../errors/InvalidDataError';
 
@@ -81,8 +81,14 @@ const AdminApp = () =>
 			return;
 		}
 		try {
-				const questions = await fetchQuestionsAndAnswersForExam(id);
-				dispatch({type: 'ACTIVE_EXAM_CHANGED', payload: {examId: id, questions: questions}});
+				//const questions = await fetchQuestionsAndAnswersForExam(id);
+				const questions = await fetchQuestionsForExam(id);
+				dispatch({type: 'ACTIVE_EXAM_CHANGED', 
+					payload: {examId: id, questionList: questions.map( (item) => {
+							return {questionId: item.id, number: item.number, points: item.points};
+						})
+					}
+				});
 		}
 		catch (err) {
 			if (err instanceof ServerError || err instanceof InvalidDataError) {
@@ -95,22 +101,21 @@ const AdminApp = () =>
 
 	function handleActiveExamChanged(state, payload)
 	{
+		console.log('handleActiveExamChanged(...)');
 		const stateCopy = {...state, exams: [...state.exams]};
 		const examId = payload.examId;
-		const questions = payload.questions;
 		const activeExam = state.exams.find( (item) => item.id == examId );
-		activeExam.questions = questions;
+		activeExam.questionList = payload.questionList;
 		stateCopy.activeExam = activeExam;
 		return stateCopy;
 	}
 
-	function handleNewQuestionAddedToExam(state, question)
+	function handleNewQuestionAddedToExam(state, payload)
 	{
 		console.log('handleNewQuestionAddedToExam(...)');
 		const stateCopy = {...state, exams: [...state.exams]};
-		stateCopy.activeExam = {...state.activeExam, questions: [...state.activeExam.questions]};
-		question.answers = [];
-    stateCopy.activeExam.questions.push(question);
+		stateCopy.activeExam = {...state.activeExam};
+    stateCopy.activeExam.questionList.push({questionId: payload.questionId, number: payload.number, points: payload.points});
 		return stateCopy;
 	}
 
@@ -222,7 +227,7 @@ const AdminApp = () =>
 				return handleAnswerDeleted(state, action.payload.questionId, action.payload.answerId);
 			case 'NEW_QUESTION_ADDED_TO_EXAM':
 				console.log('NEW_QUESTION_ADDED_TO_EXAM');
-				return handleNewQuestionAddedToExam(state, action.payload.question);
+				return handleNewQuestionAddedToExam(state, action.payload);
 
 			case 'ACTIVE_EXAM_CHANGED':
 				console.log('ACTIVE_EXAM_CHANGED');
@@ -238,7 +243,6 @@ const AdminApp = () =>
         stateCopy.isSaveRequired = false;
         stateCopy.failedToSave = false;
         stateCopy.selectedExam = -1;
-        //TODO: GET doesn't check credentials and may returned data may not have user object
         stateCopy.user = {...state.user};
         stateCopy.loggedIn = true;
         return stateCopy;
@@ -263,7 +267,7 @@ const AdminApp = () =>
       {
         console.log('USER_CREDENTIALS_RECEIVED');
         const user = {name: action.payload.username, password: action.payload.password};
-        return {...state, user: {...user, verified: false}, loggedIn: false, loginRequested: true, 
+        return {...state, user: user, loggedIn: false, loginRequested: true, 
           authenticationFailed: false, notAuthorized: false, isSaveRequired: false, failedToSave: false};
       }
       case 'CREDENTIALS_VERIFICATION_RESPONSE_RECEIVED':
