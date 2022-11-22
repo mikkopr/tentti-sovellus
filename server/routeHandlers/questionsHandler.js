@@ -3,7 +3,7 @@ const express = require('express');
 const { DatabaseError } = require('pg');
 
 const {dbConnPool} = require('../db');
-const {fetchQuestions, fetchQuestion, addAnswerToQuestion, fetchAnswers, fetchAnswersWithoutCorrectness, updateQuestion} = require('../questionFunctions');
+const {fetchQuestions, fetchQuestion, addAnswerToQuestion, fetchQuestionAndAnswers, fetchAnswersWithoutCorrectness, updateQuestion} = require('../questionFunctions');
 const {fetchExamIdsContainingQuestion} = require('../examQuestionsFunctions');
 const {verifyToken, verifyAdminRole, validateReqParamId, userInRole} = require('../validateFunctions');
 const roles = require('../roles');
@@ -119,6 +119,10 @@ router.put('/:questionId', verifyToken, verifyAdminRole, async (req, res) =>
    }
  });
 
+
+ /**
+	* Returns a question and it's answers
+  */
 router.get('/:questionId/vastaukset', verifyToken, async (req, res) =>
 {
   const questionIdParam = validateReqParamId(req.params.questionId);
@@ -128,13 +132,15 @@ router.get('/:questionId/vastaukset', verifyToken, async (req, res) =>
   }
 	try {
 		const includeCorrectness = (req.query.oikeat && await userInRole(req.decodedToken, roles.roles().admin)) ? true : false;
-  	let answerRows = undefined;
+  	let resultRows = undefined;
     const questionIdNr = new Number(questionIdParam);
 		if (includeCorrectness)
-    	answerRows = await fetchAnswers(dbConnPool(), questionIdNr);
+			//TODO if no answers
+    	resultRows = await fetchQuestionAndAnswers(dbConnPool(), questionIdNr);
 		else
-			answerRows = await fetchAnswersWithoutCorrectness(dbConnPool(), questionIdNr);
-		res.status(200).send(answerRows);
+			//TODO
+			resultRows = await fetchAnswersWithoutCorrectness(dbConnPool(), questionIdNr);
+		res.status(200).send(resultRows);
   }
   catch (err) {
     res.status(500).send('ERROR: ' + err.message);

@@ -17,10 +17,10 @@ const userInRole = async (decodedToken, role) =>
 		//Currently no role tables, checks only admin boolean
 		const result = await dbConnPool().query(
 			"SELECT admin FROM kayttaja WHERE email=$1", [decodedToken.email]);
-		if (result.rows[0]?.admin)
-			return false;
-		else
+		if (result.rows[0] && result.rows[0].admin)
 			return true;
+		else
+			return false;
 	}
 	catch (err) {
     console.log('ERROR: Failed to verify role: ' + role + ': ' + err.message);
