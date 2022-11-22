@@ -2,7 +2,7 @@
 /**
  * Creates a new question and adds it to the exam.
  * 
- * Returns the created question if succesful.
+ * Returns the created question, question number and points if succesful.
  */
 const addQuestionToExam = async (pool, examId, data) =>
 {
@@ -13,11 +13,11 @@ const addQuestionToExam = async (pool, examId, data) =>
     let values = [data.teksti];
     const questionResult = await client.query(text, values);
     
-    text = "INSERT INTO tentti_kysymys_liitos (tentti_id, kysymys_id, kysymys_numero, pisteet) VALUES ($1, $2, $3, $4)";
-    values = [examId, questionResult.rows[0].id, data.kysymys_numero, data.pisteet];
-    await client.query(text, values);
+    text = "INSERT INTO tentti_kysymys_liitos (tentti_id, kysymys_id, kysymys_numero, pisteet) VALUES ($1, $2, $3, $4) RETURNING kysymys_numero AS number, pisteet AS points";
+    values = [examId, questionResult.rows[0].id, data.number, data.points];
+    const joinResult = await client.query(text, values);
     await client.query('COMMIT');
-    return questionResult.rows[0];
+    return {...questionResult.rows[0], number: joinResult.number, points: joinResult.points};
   }
   catch (err) {
     await client.query('ROLLBACK');
@@ -41,7 +41,7 @@ const removeQuestionFromExam = async (pool, examId, questionId) =>
  
  const fetchExamQuestions = async (pool, examId) =>
  {
-   const text = "SELECT kysymys.id, kysymys.teksti, tentti_kysymys_liitos.kysymys_numero, tentti_kysymys_liitos.pisteet FROM kysymys INNER JOIN tentti_kysymys_liitos ON kysymys.id=tentti_kysymys_liitos.kysymys_id WHERE tentti_kysymys_liitos.tentti_id=$1";
+   const text = "SELECT kysymys.id, kysymys.teksti AS text, tentti_kysymys_liitos.kysymys_numero AS number, tentti_kysymys_liitos.pisteet AS points FROM kysymys INNER JOIN tentti_kysymys_liitos ON kysymys.id=tentti_kysymys_liitos.kysymys_id WHERE tentti_kysymys_liitos.tentti_id=$1 ORDER BY tentti_kysymys_liitos.kysymys_numero ASC";
    const values = [examId];
    const result = await pool.query(text, values);
    return result.rows;
