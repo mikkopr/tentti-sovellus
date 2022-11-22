@@ -1,13 +1,14 @@
 
 import { useEffect, useReducer, useState } from 'react';
-import axios, { AxiosHeaders } from 'axios';
+import axios from 'axios';
+
+import * as axiosConfig from '../axiosConfig';
 
 import '../App.css';
 
 import EditExam from './EditExam';
 import ExamMenu from '../ExamMenu';
 import Login from '../Login';
-import { act } from 'react-dom/test-utils';
 import { fetchQuestionsAndAnswersForExam } from '../dataFunctions/examDataFunctions';
 import ServerError from '../errors/ServerError';
 import InvalidDataError from '../errors/InvalidDataError';
@@ -30,8 +31,8 @@ const examsDataStub =
 };
 
 //const STORAGE_KEY = 'examsData';
-const SERVER = 'http://localhost:8081';
-const DATA_SERVER = 'http://localhost:8080';
+//const SERVER = 'http://localhost:8081';
+const SERVER = 'http://localhost:8080';
 
 const AdminApp = () => 
 {
@@ -43,7 +44,7 @@ const AdminApp = () =>
     const fetchData = async () => {
       console.log("Fetching data");
       try {
-        const result = await axios(DATA_SERVER + '/tentit');
+        const result = await axios(SERVER + '/tentit', axiosConfig.getConfig());
         dispatch({type: 'DATA_RECEIVED', payload: result.data});
       }
       catch (error) {
@@ -56,34 +57,12 @@ const AdminApp = () =>
     }
   }, [examsState.dataFetchRequired, examsState.loggedIn]);
 
-  /*useEffect( () =>
-  {
-    const postData = async () =>
-    {
-      let result;
-      try {
-        result = await axios.post(SERVER, examsState); //returns object
-        if (result.status >= 200 && result.status < 300)
-          dispatch({type: 'DATA_SAVED', payload: result.data});
-        else
-          dispatch({type: 'FAILED_TO_SAVE_DATA', payload: result.status});
-      }
-      catch (error) {
-        //Note that 403 ends up here!
-        dispatch({type: 'FAILED_TO_SAVE_DATA', payload: error?.response?.status});
-      }
-    }
-    if (examsState.isSaveRequired && examsState.loggedIn) {
-      postData();
-    }
-  }, [examsState.isSaveRequired, examsState.loggedIn, examsState.failedToSave]);*/
-
   useEffect( () =>
   {
     const postData = async () =>
     {
       try {
-        const result = await axios.post(SERVER + '/login', examsState.user);
+        const result = await axios.post(SERVER + '/login', {email: examsState.user.name, password: examsState.user.password});
         dispatch({type: 'CREDENTIALS_VERIFICATION_RESPONSE_RECEIVED', 
           payload: {status: result.status, data: result.data}});
       }
@@ -198,16 +177,6 @@ const AdminApp = () =>
         stateCopy.isSaveRequired = true;
         stateCopy.failedToSave = false;
         return stateCopy;
-        /*
-        stateCopy.exams[state.selectedExam] = 
-          {...state.exams[state.selectedExam], questions: [...state.exams[state.selectedExam].questions]};
-        const questionIndex = action.payload.questionIndex;
-        let questionCopyDeep = JSON.parse(JSON.stringify(state.exams[state.selectedExam].questions[questionIndex]));
-        questionCopyDeep.answers[action.payload.answerIndex].isCorrect = action.payload.value;
-        stateCopy.exams[state.selectedExam].questions[questionIndex] = questionCopyDeep;
-        stateCopy.isSaveRequired = true;
-        return stateCopy;
-        */
       }
       case 'ADD_ANSWER_CLICKED':
       {
@@ -255,22 +224,6 @@ const AdminApp = () =>
 				console.log('NEW_QUESTION_ADDED_TO_EXAM');
 				return handleNewQuestionAddedToExam(state, action.payload.question);
 
-      /*case 'INITIALIZE_DATA':
-        const copyOfState = JSON.parse(JSON.stringify(action.payload));
-        return copyOfState;*/
-      /*case 'SAVE_REQUIRED_VALUE_CHANGED':
-        console.log('SAVE_REQUIRED_VALUE_CHANGED');
-        return {...state, isSaveRequired: action.payload};*/
-      /*case 'INITIAL_DATA_RECEIVED':
-      {
-        console.log('INITIAL_DATA_RECEIVED');
-        const stateCopy = JSON.parse(JSON.stringify(action.payload));
-        stateCopy.dataFetchRequired = false;
-        stateCopy.failedToFetch = false;
-        stateCopy.selectedExam = -1;
-        stateCopy.isSaveRequired = false;
-        return stateCopy;
-      }*/
 			case 'ACTIVE_EXAM_CHANGED':
 				console.log('ACTIVE_EXAM_CHANGED');
 				const nextSate = handleActiveExamChanged(state, action.payload);
@@ -317,15 +270,19 @@ const AdminApp = () =>
       {
         console.log('CREDENTIALS_VERIFICATION_RESPONSE_RECEIVED');
         const responseStatus = action.payload.status;
-        const user = action.payload.data;
-        if (responseStatus == 200 && user.verified === true) {
-          return {...state, user: {...user}, loggedIn: true, loginRequested: false, dataFetchRequired: true};
+        const userId = action.payload.data.userId;
+				const email = action.payload.data.email;
+				const role = action.payload.data.email;
+				const token = action.payload.data.token;
+        if (responseStatus == 200) {
+					axiosConfig.setToken(token);
+          return {...state, user: {userId: userId, email: email, role: role, token: token}, loggedIn: true, loginRequested: false, dataFetchRequired: true};
         }
-        return {...state, user: {...user, verified: false}, loggedIn: false, loginRequested: false, failedToAuthenticate: true};
+        return {...state, user: {...state.user}, loggedIn: false, loginRequested: false, failedToAuthenticate: true};
       }
       case 'FAILED_TO_VERIFY_CREDENTIALS':
         console.log('FAILED_TO_VERIFY_CREDENTIALS');
-        return {...state, user: {...state.user, verified: false}, loggedIn: false, failedToAuthenticate: true};
+        return {...state, user: {...state.user}, loggedIn: false, failedToAuthenticate: true};
       case 'LOG_OUT_REQUESTED':
         console.log('LOG_OUT_REQUESTED');
         return {...state, user: {}, loggedIn: false, notAuthorized: false};

@@ -50,9 +50,10 @@ router.post("/login", async (req, res) =>
 		return;
   }
   let token;
+	let role;
   try {
 		//TODO create a roles table and query the roles of the user
-		const role = existingUser.admin ? roles.roles().admin : roles.roles().user;
+		role = existingUser.admin ? roles.roles().admin : roles.roles().user;
     token = jwt.sign(
       {userId: existingUser.id, email: existingUser.email, role: role},
       'tokensecret', //TODO dotenv
@@ -68,7 +69,7 @@ router.post("/login", async (req, res) =>
 	res.status(200).send(
 		{	userId: existingUser.id,
       email: existingUser.email,
-			role: existingUser.role,
+			role: role,
       token: token,
     });
 });
