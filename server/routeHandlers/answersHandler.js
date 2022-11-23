@@ -54,12 +54,12 @@ router.put('/:answerId', verifyToken, verifyAdminRole, async (req, res) =>
     return;
   }
   const data = req.body;
-  if (data === undefined || data.teksti === undefined || data.oikein === undefined) {
+  if (data === undefined || data.text === undefined || data.correct === undefined) {
     res.status(400).send('Invalid http request parameter');
   }
   try {
-    const text = "UPDATE vastaus SET teksti=$1, oikein=$2 WHERE id=$3 RETURNING *";
-    const values = [data.teksti, data.oikein, answerId];
+    const text = "UPDATE vastaus SET teksti=$1, oikein=$2 WHERE id=$3 RETURNING id, teksti AS text, oikein AS correct";
+    const values = [data.text, data.correct, answerIdParam];
     const result = await dbConnPool().query(text, values);
     const updatedAnswer = result.rows[0];
     

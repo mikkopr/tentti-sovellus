@@ -63,8 +63,9 @@ router.put('/:questionId', verifyToken, verifyAdminRole, async (req, res) =>
     return;
   }
   const data = req.body;
-  if (data === undefined || data.teksti === undefined) {
+  if (data === undefined || data.text === undefined) {
     res.status(400).send('Invalid http request parameter');
+		return;
   }
   try {
     const updatedQuestion = await updateQuestion(dbConnPool(), questionIdParam, req.body);
