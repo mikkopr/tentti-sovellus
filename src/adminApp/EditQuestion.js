@@ -3,29 +3,53 @@ import { useEffect, useReducer } from "react";
 
 import EditAnswer from "./EditAnswer";
 
-import {fetchQuestionAndAnswers} from '../dataFunctions/examDataFunctions';
+import {fetchQuestionAndAnswers, updateQuestion } from '../dataFunctions/examDataFunctions';
 import {addAnswer} from '../dataFunctions/answerDataFunctions';
-import { act } from "react-dom/test-utils";
 
 
 function reducer(state, action)
 {
-	const stateCopy = {...state, answers: [...state.answers]};
+	const stateCopy = {...state};
 	switch (action.type) {
 		case 'DATA_RECEIVED':
-			console.log('DATA_RECEIVED');
+			console.log('EditQuestion DATA_RECEIVED');
 			stateCopy.text = action.payload.text;
 			stateCopy.number = action.payload.number;
 			stateCopy.points = action.payload.points;
 			stateCopy.answers = action.payload.answers;
-			stateCopy.initialized = true;
+			return stateCopy;
+		case 'QUESTION_TEXT_CHANGED':
+			console.log('EditQuestion QUESTION_TEXT_CHANGED');
+			stateCopy.text = action.payload.text;
 			return stateCopy;
 		case 'ANSWER_ADDED':
-			console.log('ANSWER_ADDED');
+			console.log('EditQuestion ANSWER_ADDED');
+			stateCopy.answers = [...stateCopy.answers];
 			stateCopy.answers.push(action.payload.answer);
 			return stateCopy;
-		default:
-			throw Error('Unknown event: ' + action.type);
+		case 'ANSWER_DELETED':
+		{
+			console.log('EditQuestion ANSWER_DELETED');
+			const answerIndex = stateCopy.answers.findIndex( (item) => item.id == action.payload.answerId );
+			stateCopy.answers = stateCopy.answers.slice(0, answerIndex).concat(stateCopy.answers.slice(answerIndex + 1, stateCopy.answers.length));
+			return stateCopy;
+		}
+		case 'ANSWER_CHANGED':
+		{
+			console.log('EditQuestion ANSWER_CHANGED');
+			stateCopy.answers = [...stateCopy.answers];
+			const answerIndex = stateCopy.answers.findIndex( (item) => item.id == action.payload.answerId );
+			stateCopy.answers[answerIndex] = {...stateCopy.answers[answerIndex], text: action.payload.text, correct: action.payload.correct};
+			return stateCopy;
+		}
+		case 'FAILED_TO_UPDATE_ANSWER':
+			console.log('EditQuestion FAILED_TO_UPDATE_ANSWER');
+			return stateCopy;
+		case 'FAILED_TO_DELETE_ANSWER':
+			console.log('EditQuestion FAILED_TO_DELETE_ANSWER');
+			return stateCopy;
+		//default:
+			//throw Error('Unknown event: ' + action.type);
 	}
 }
 
@@ -36,17 +60,19 @@ const initialState = {
 	number: 0,
 	points: 0,
 	answers: [],
-	initialized: false
 }
 
 const EditQuestion = (props) => 
 { 
+	console.log("EditQuestion");
+
 	const [state, dispatch] = useReducer(reducer, {...initialState, examId: props.examId, questionId: props.questionId});
 
 	useEffect( () =>
 	{
-		let fetchResult;
+		console.log('EditQuestion.useEffect(...)')
 		const fetchData = async () => {
+			let fetchResult;
 			try {
 			 	fetchResult = await fetchQuestionAndAnswers(state.questionId);
 			}
@@ -60,10 +86,20 @@ const EditQuestion = (props) =>
 			}
 			dispatch({type: 'DATA_RECEIVED', payload: fetchResult});
 		}
-		if (!state.initialized) {
-			fetchData();
+		fetchData();
+	}, []);
+
+	async function handleQuestionTextChanged(value)
+	{
+		try {
+			const updatedQuestion = await updateQuestion(state.questionId, value);
+			dispatch({type: 'QUESTION_TEXT_CHANGED', payload: {text: updatedQuestion.text} });
 		}
-	}, [state.initialized]);
+		catch (err) {
+			props.dispatch({type: 'FAILED_TO_UPDATE_QUESTION', payload: err});
+			return;
+		}
+	}
 
 	async function handleAddAnswerClicked()
 	{
@@ -77,22 +113,24 @@ const EditQuestion = (props) =>
 		}
 	}
 
+	async function handleQuestionBlur(event)
+	{
+		console.log('handlequestionBlur() event.target.value: ', event.target.value);
+	}
+
 	return (
     <div className="kysymys">
         <div>
             <input type='textbox' className="kysymys-teksti" value={state.text}
-                onChange={event => dispatch(
-                    {type: 'QUESTION_VALUE_CHANGED',
-                    payload: {value: event.target.value}
-                    }
-                )}
+                onChange={event => handleQuestionTextChanged(event.target.value)}
+								onBlur={(event) => handleQuestionBlur(event)}
             />
         </div>
         <div>
             {state.answers.map( (answer) => {
                 return (
                     <EditAnswer
-                        key={answer.answerId}
+                        key={answer.id}
                         answer={answer}
 												questionId={state.questionId}
                         dispatch={dispatch}

@@ -25,9 +25,11 @@ const fetchQuestionAndAnswers = async (questionId) =>
 	if (fetchResult.data?.length == 0) {
 		return undefined;
 	}
-	let question = {questionId: fetchResult.data.id, text: fetchResult.data.text, number: fetchResult.data.number, points: fetchResult.data.points, answers: []};
+	let question = {id: fetchResult.data[0].id, text: fetchResult.data[0].text, number: fetchResult.data[0].number, 
+		points: fetchResult.data[0].points, answers: []};
 	let result = fetchResult.data.reduce((acc, curr) => {
-			acc.answers.push({answerId: curr.answer_id, text: curr.answer_text, correct: curr.answer_correct});
+			if (curr.answer_id)
+				acc.answers.push({id: curr.answer_id, text: curr.answer_text, correct: curr.answer_correct});
 			return acc;
 		}, question);
 	return result;
@@ -102,29 +104,16 @@ const addNewQuestionToExam = async (examId) =>
 	return fetchResult.data;
 }
 
-/*const addNewQuestionToExam = async (examId) =>
+const updateQuestion = async (questionId, text) =>
 {
 	let fetchResult = undefined;
 	try {
-		const questionStub = {teksti: 'kysymys', kysymys_numero: 1, pisteet: 0};
-		fetchResult = await axios.post(`http://localhost:8080/tenttikysymykset/tentti/${examId}/kysymys`, questionStub);
-	}
-	catch (err) {
-		if (!err.request) {
-			throw new Error('ERROR: Failed to make a request!');
-		}
-		if (!err.response) {
-			throw new ConnectionError('ERROR: No response received!');
-		}
-		if (err.response.status === 400) {
-			throw new BadRequestError(err.message);
-		}
-		throw new ServerError(err.message , err.response.status);
-	}
-	if (fetchResult.status === 200 || fetchResult.status === 204) {
+		fetchResult = await axios.put(`http://localhost:8080/kysymykset/${questionId}`, {text: text} , axiosConfig.getConfig());
 		return fetchResult.data;
 	}
-	throw new ServerError('Server was unable to fulfill the request', fetchResult.status);
-}*/
+	catch (err) {
+		throw err;
+	}
+}
 
-export {fetchQuestionAndAnswers, fetchQuestionsForExam, fetchQuestionsAndAnswersForExam, updateExam, addNewQuestionToExam};
+export {fetchQuestionAndAnswers, fetchQuestionsForExam, fetchQuestionsAndAnswersForExam, updateExam, addNewQuestionToExam, updateQuestion};
