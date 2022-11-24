@@ -67,3 +67,8 @@
   width: 25em;
   background-color: skyblue;
 }
+
+.navbar {
+	height: 40px;
+	background-color: aqua;
+}

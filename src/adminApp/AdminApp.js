@@ -6,12 +6,14 @@ import * as axiosConfig from '../axiosConfig';
 
 import '../App.css';
 
+import Navbar from '../Navbar'
 import EditExam from './EditExam';
 import ExamMenu from '../ExamMenu';
 import Login from '../Login';
 import { fetchQuestionsForExam } from '../dataFunctions/examDataFunctions';
 import ServerError from '../errors/ServerError';
 import InvalidDataError from '../errors/InvalidDataError';
+import Registration from '../Registration';
 
 const examsDataStub = 
 {
@@ -175,7 +177,7 @@ const AdminApp = () =>
         console.log('USER_CREDENTIALS_RECEIVED');
         const user = {name: action.payload.username, password: action.payload.password};
         return {...state, user: user, loggedIn: false, loginRequested: true, 
-          authenticationFailed: false, notAuthorized: false, isSaveRequired: false, failedToSave: false};
+          authenticationFailed: false, notAuthorized: false, isSaveRequired: false, failedToSave: false, showLogin: false};
       }
       case 'CREDENTIALS_VERIFICATION_RESPONSE_RECEIVED':
       {
@@ -183,11 +185,12 @@ const AdminApp = () =>
         const responseStatus = action.payload.status;
         const userId = action.payload.data.userId;
 				const email = action.payload.data.email;
-				const role = action.payload.data.email;
+				const role = action.payload.data.role;
 				const token = action.payload.data.token;
         if (responseStatus == 200) {
 					axiosConfig.setToken(token);
-          return {...state, user: {userId: userId, email: email, role: role, token: token}, loggedIn: true, loginRequested: false, dataFetchRequired: true};
+          return {...state, user: {userId: userId, email: email, role: role, token: token}, loggedIn: true, 
+						loginRequested: false, dataFetchRequired: true};
         }
         return {...state, user: {...state.user}, loggedIn: false, loginRequested: false, failedToAuthenticate: true};
       }
@@ -197,17 +200,50 @@ const AdminApp = () =>
       case 'LOG_OUT_REQUESTED':
         console.log('LOG_OUT_REQUESTED');
         return {...state, user: {}, loggedIn: false, notAuthorized: false};
-      default:
+      
+			case 'SHOW_LOGIN_REQUESTED':
+				console.log('SHOW_LOGIN_REQUESTED');
+				return {...state, user: {}, loggedIn: false, showLogin: true, showRegister: false};
+			
+			case 'SHOW_REGISTRATION_REQUESTED':
+				console.log('SHOW_REGISTRATION_REQUESTED');
+				return {...state, user: {}, loggedIn: false, showLogin: false, showRegister: true};
+
+			case 'REGISTRATION_COMPLETED':
+				console.log('REGISTRATION_COMPLETED');
+				const userId = action.payload.data.userId;
+				const email = action.payload.data.email;
+				const role = action.payload.data.role;
+				const token = action.payload.data.token;
+				axiosConfig.setToken(token);
+				return {...state, user: {userId: userId, email: email, role: role, token: token}, loggedIn: true, 
+						loginRequested: false, dataFetchRequired: true, showLogin: false, showRegister: false, duplicateEmail: false};
+			
+			case 'REGISTRATION_FAILED':
+			{
+				console.log('REGISTRATION_FAILED');
+				console.log(action.payload.error?.message);
+				if (action.payload.status == 409) {
+					console.log('duplicate email');
+					return {...state, user: {}, loggedIn: false, showLogin: false, showRegister: true, duplicateEmail: true};
+				}
+				else {
+					return {...state, user: {}, loggedIn: false, showLogin: false, showRegister: true, duplicateEmail: false};
+				}
+			}
+			default:
         throw Error('Unknown event: ' + action.type);
     }
   }
 
   return (
     <div className='App'>
-      {examsState.loggedIn && <input type='button' value='Kirjaudu ulos' onClick={(event) =>
+      <Navbar dispatch={dispatch}/>
+			{examsState.loggedIn && <input type='button' value='Kirjaudu ulos' onClick={(event) =>
         dispatch({type: 'LOG_OUT_REQUESTED'})}/>
       }
-      {!examsState.loggedIn && <Login dispatch={dispatch}/>}
+      {examsState.showRegister && <Registration dispatch={dispatch} duplicate={examsState.duplicateEmail}/>}
+			{examsState.showLogin && <Login dispatch={dispatch}/>}
       {!examsState.loggedIn && examsState.failedToAuthenticate && <p>Käyttäjätunnus tai salasana virheellinen!</p>}
       {examsState.loggedIn && !examsState.dataFetchRequired && <ExamMenu exams={examsState.exams} onExamSelected={handleExamSelected}/>}
       {examsState.loggedIn && examsState.activeExam !== undefined && <EditExam exam={examsState.activeExam} dispatch={dispatch}/>}
