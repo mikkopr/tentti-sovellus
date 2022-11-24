@@ -13,9 +13,6 @@ import { fetchQuestionsForExam } from '../dataFunctions/examDataFunctions';
 import ServerError from '../errors/ServerError';
 import InvalidDataError from '../errors/InvalidDataError';
 
-const answerStub = {answer: 'Vastaus', isCorrect: false};
-const questionStub = {question: 'Kysymys?', answers: [{...answerStub}]}
-
 const examsDataStub = 
 {
   user: {},
@@ -82,13 +79,9 @@ const AdminApp = () =>
 		}
 		try {
 				//const questions = await fetchQuestionsAndAnswersForExam(id);
-				const questions = await fetchQuestionsForExam(id);
+				const questionDataArray = await fetchQuestionsForExam(id);
 				dispatch({type: 'ACTIVE_EXAM_CHANGED', 
-					payload: {examId: id, questionList: questions.map( (item) => {
-							return {questionId: item.id, number: item.number, points: item.points};
-						})
-					}
-				});
+					payload: {examId: id, questionDataArray: questionDataArray} });
 		}
 		catch (err) {
 			if (err instanceof ServerError || err instanceof InvalidDataError) {
@@ -104,8 +97,9 @@ const AdminApp = () =>
 		console.log('handleActiveExamChanged(...)');
 		const stateCopy = {...state, exams: [...state.exams]};
 		const examId = payload.examId;
-		const activeExam = state.exams.find( (item) => item.id == examId );
-		activeExam.questionList = payload.questionList;
+		let arr = [];
+		const activeExam = {...stateCopy.exams.find( (item) => item.id == examId )};
+		activeExam.questionDataArray = [...payload.questionDataArray];
 		stateCopy.activeExam = activeExam;
 		return stateCopy;
 	}
@@ -113,42 +107,21 @@ const AdminApp = () =>
 	function handleNewQuestionAddedToExam(state, payload)
 	{
 		console.log('handleNewQuestionAddedToExam(...)');
-		const stateCopy = {...state, exams: [...state.exams]};
-		stateCopy.activeExam = {...state.activeExam};
-    stateCopy.activeExam.questionList.push({questionId: payload.questionId, number: payload.number, points: payload.points});
+		const stateCopy = {...state, exams: [...state.exams]}; //TODO neccessary to copy exams array?
+		stateCopy.activeExam = {...stateCopy.activeExam};
+		stateCopy.activeExam.questionDataArray = [...stateCopy.activeExam.questionDataArray];
+    stateCopy.activeExam.questionDataArray.push(
+			{id: payload.questionData.id, text: payload.questionData.text ,number: payload.questionData.number, points: payload.questionData.points});
 		return stateCopy;
 	}
 
-	function handleAnswerAdded(state, questionId, answer)
+	function handleQuestionRemovedFromExam(state, payload)
 	{
-		console.log('handleAnswerAdded(...)');
-		const stateCopy = {...state, exams: [...state.exams]};
-		stateCopy.activeExam = {...state.activeExam, questions: [...state.activeExam.questions]};
-		const questionIndex = stateCopy.activeExam.questions.findIndex( (item) => item.id == questionId);
-		const modifiedQuestionCopy = 
-			{...stateCopy.activeExam.questions[questionIndex],
-				answers: [...stateCopy.activeExam.questions[questionIndex].answers]};
-		modifiedQuestionCopy.answers.push(answer);
-		stateCopy.activeExam.questions[questionIndex] = modifiedQuestionCopy;
-		return stateCopy;
-	}
-
-	function handleAnswerDeleted(state, questionId, answerId)
-	{
-		//TODO maybe should reload the exam
-		console.log('handleAnswerDeleted(...)');
-		const stateCopy = {...state, exams: [...state.exams]};
-		stateCopy.activeExam = {...state.activeExam, questions: [...state.activeExam.questions]};
-
-		const questionIndex = stateCopy.activeExam.questions.findIndex( (item) => item.id == questionId);
-		const answerIndex = stateCopy.activeExam.questions[questionIndex].answers.findIndex( (item) => item.id == answerId);
-
-		const modifiedQuestionCopy = {...stateCopy.activeExam.questions[questionIndex]};
-		modifiedQuestionCopy.answers = modifiedQuestionCopy.answers.slice(0, answerIndex).concat(
-			modifiedQuestionCopy.answers.slice(answerIndex + 1, modifiedQuestionCopy.answers.length));
-		
-		
-		stateCopy.activeExam.questions[questionIndex] = modifiedQuestionCopy;
+		const stateCopy = {...state};
+		stateCopy.activeExam = {...stateCopy.activeExam};
+		const questionIndex = stateCopy.activeExam.questionDataArray.findIndex( (item => item.id == payload.questionId) );
+		stateCopy.activeExam.questionDataArray = stateCopy.activeExam.questionDataArray.slice(0, questionIndex).concat(
+			stateCopy.activeExam.questionDataArray.slice(questionIndex + 1, stateCopy.activeExam.questionDataArray.length));
 		return stateCopy;
 	}
 
@@ -156,83 +129,20 @@ const AdminApp = () =>
   {
     let stateCopy = {...state, exams: [...state.exams]};
     
-    switch (action.type) {
-      case 'ANSWER_VALUE_CHANGED':
-        stateCopy.exams[state.selectedExam].questions[action.payload.questionIndex].answers[action.payload.answerIndex].answer =
-          action.payload.value;
-        stateCopy.isSaveRequired = true;
-        stateCopy.failedToSave = false;
-        return stateCopy;
-      case 'ANSWER_CHECKED_STATE_CHANGED':
-      { 
-        stateCopy.exams[state.selectedExam] = 
-          {...state.exams[state.selectedExam], questions: [...state.exams[state.selectedExam].questions]};
-        const questionIndex = action.payload.questionIndex;
-        //Make a shadow copy of the modified question and replace the current one
-        stateCopy.exams[state.selectedExam].questions[questionIndex] = 
-          {...state.exams[state.selectedExam].questions[questionIndex],
-            answers: [...state.exams[state.selectedExam].questions[questionIndex].answers]
-          };
-        //Make a deep copy of the modified answer
-        const answerIndex = action.payload.answerIndex;
-        let answerCopyDeep = JSON.parse(JSON.stringify(
-          stateCopy.exams[state.selectedExam].questions[questionIndex].answers[answerIndex]));
-        answerCopyDeep.isCorrect = action.payload.value;
-        stateCopy.exams[state.selectedExam].questions[questionIndex].answers[answerIndex] = answerCopyDeep;
-        stateCopy.isSaveRequired = true;
-        stateCopy.failedToSave = false;
-        return stateCopy;
-      }
-      case 'ADD_ANSWER_CLICKED':
-      {
-        //Make a shallow copy of the modified exam and replace the current one in the exams array
-        stateCopy.exams[state.selectedExam] = {...state.exams[state.selectedExam]};
-        //Make a shadow copy of the questions array of the selected exam
-        stateCopy.exams[state.selectedExam].questions = [...state.exams[state.selectedExam].questions];
-        //Make a deep copy of the modified question and add a new answer to it
-        const questionIndex = action.payload.questionIndex;
-        let questionCopyDeep = JSON.parse(JSON.stringify(state.exams[state.selectedExam].questions[questionIndex]));
-        questionCopyDeep.answers.push({...answerStub});
-        //Replace the existing question object with the modified one
-        stateCopy.exams[state.selectedExam].questions[questionIndex] = questionCopyDeep;
-        stateCopy.isSaveRequired = true;
-        stateCopy.failedToSave = false;
-        return stateCopy;
-      }
-      case 'ADD_QUESTION_CLICKED':
-        stateCopy.exams[state.selectedExam] = 
-          {...state.exams[state.selectedExam], questions: [...state.exams[state.selectedExam].questions]};
-        stateCopy.exams[state.selectedExam].questions.push({...questionStub});
-        stateCopy.isSaveRequired = true;
-        stateCopy.failedToSave = false;
-        return stateCopy;
-      case 'QUESTION_VALUE_CHANGED':
-      {
-        //Make a deep copy only of the modified question
-        stateCopy.exams[state.selectedExam] = 
-          {...state.exams[state.selectedExam], questions: [...state.exams[state.selectedExam].questions]};
-        let questionCopyDeep = JSON.parse(JSON.stringify(state.exams[state.selectedExam].questions[action.payload.questionIndex]));
-        questionCopyDeep.question = action.payload.value;
-        stateCopy.exams[state.selectedExam].questions[action.payload.questionIndex] = questionCopyDeep;
-        stateCopy.isSaveRequired = true;
-        stateCopy.failedToSave = false;
-        return stateCopy;
-      }
+    switch (action.type) 
+		{ 
+			case 'ACTIVE_EXAM_CHANGED':
+				console.log('ACTIVE_EXAM_CHANGED');
+				return handleActiveExamChanged(state, action.payload);
 
-			case 'ANSWER_ADDED':
-				console.log('ANSWER_ADDED');
-				return handleAnswerAdded(state, action.payload.questionId, action.payload.answer);
-			case 'ANSWER_DELETED':
-				console.log('ANSWER_DELETED');
-				return handleAnswerDeleted(state, action.payload.questionId, action.payload.answerId);
 			case 'NEW_QUESTION_ADDED_TO_EXAM':
 				console.log('NEW_QUESTION_ADDED_TO_EXAM');
 				return handleNewQuestionAddedToExam(state, action.payload);
 
-			case 'ACTIVE_EXAM_CHANGED':
-				console.log('ACTIVE_EXAM_CHANGED');
-				const nextSate = handleActiveExamChanged(state, action.payload);
-        return nextSate;
+			case 'QUESTION_REMOVED_FROM_EXAM':
+				console.log('QUESTION_REMOVED_FROM_EXAM');
+				return handleQuestionRemovedFromExam(state, action.payload);
+
       case 'DATA_RECEIVED':
       {
         console.log('DATA_RECEIVED');
@@ -251,19 +161,16 @@ const AdminApp = () =>
         console.log('FAILED_TO_FETCH_DATA');
 				console.log(action.payload?.message);
         return {...state, failedToFetch: true};
-      case 'DATA_SAVED':
-        console.log('DATA_SAVED');
-        return {...state, isSaveRequired: false, failedToSave: false, notAuthorized: false};
-      case 'FAILED_TO_SAVE_DATA':
-      {
+      
+			case 'FAILED_TO_UPDATE_DATA':
+				console.log('FAILED_TO_UPDATE_DATA ', action.payload?.err?.message);
+				return {...state};
+      
+			/*case 'FAILED_TO_SAVE_DATA':
         console.log('FAILED_TO_SAVE_DATA');
-        /*const responseStatus = action.payload;
-        if (responseStatus == 403)
-          return {...state, isSaveRequired: true, failedToSave: true, notAuthorized: true};
-        else  
-          return {...state, isSaveRequired: true, failedToSave: true};*/
-      }
-      case 'USER_CREDENTIALS_RECEIVED':
+        return {...state};*/
+      
+			case 'USER_CREDENTIALS_RECEIVED':
       {
         console.log('USER_CREDENTIALS_RECEIVED');
         const user = {name: action.payload.username, password: action.payload.password};

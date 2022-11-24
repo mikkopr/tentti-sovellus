@@ -9,15 +9,15 @@ const addQuestionToExam = async (pool, examId, data) =>
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    let text = "INSERT INTO kysymys (teksti) VALUES($1) RETURNING *";
-    let values = [data.teksti];
+    let text = "INSERT INTO kysymys (teksti) VALUES($1) RETURNING id, teksti AS text";
+    let values = [data.text];
     const questionResult = await client.query(text, values);
     
     text = "INSERT INTO tentti_kysymys_liitos (tentti_id, kysymys_id, kysymys_numero, pisteet) VALUES ($1, $2, $3, $4) RETURNING kysymys_numero AS number, pisteet AS points";
     values = [examId, questionResult.rows[0].id, data.number, data.points];
     const joinResult = await client.query(text, values);
     await client.query('COMMIT');
-    return {...questionResult.rows[0], number: joinResult.number, points: joinResult.points};
+    return {...questionResult.rows[0], number: joinResult.rows[0].number, points: joinResult.rows[0].points};
   }
   catch (err) {
     await client.query('ROLLBACK');
@@ -36,7 +36,7 @@ const removeQuestionFromExam = async (pool, examId, questionId) =>
 	const text = "DELETE FROM tentti_kysymys_liitos WHERE tentti_id=$1 AND kysymys_id=$2";
 	const values = [examId, questionId];
 	const result = await pool.query(text, values);
-	return result.rows[0];
+	return result.rowCount;
 }
  
  const fetchExamQuestions = async (pool, examId) =>

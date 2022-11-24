@@ -28,7 +28,8 @@ const fetchExam = async (pool, id) =>
 
 const fetchExams = async (pool) =>
 {
-  const text = "SELECT * FROM tentti";
+	//TODO more colums
+  const text = "SELECT id, nimi AS name, kuvaus AS description FROM tentti";
   try {
     const result = await pool.query(text);
     return result.rows;

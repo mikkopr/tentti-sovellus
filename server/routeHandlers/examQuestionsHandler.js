@@ -23,13 +23,14 @@ router.post('/tentti/:examId/kysymys', verifyToken, verifyAdminRole, async (req,
     return;
   }
   const data = req.body;
-  if (data == undefined || data.teksti === undefined || data.kysymys_numero === undefined || 
-      data.pisteet === undefined) {
+  if (data == undefined || data.text === undefined || data.number === undefined || 
+      data.points === undefined) {
     res.status(400).send('Invalid data: received question data is invalid');
+		return;
   }
   try {
-    const addedQuestion = await addQuestionToExam(dbConnPool(), examIdParam, req.body); 
-    res.status(200).send(addedQuestion);
+    const questionData = await addQuestionToExam(dbConnPool(), examIdParam, req.body); 
+    res.status(200).send(questionData);
   }
   catch (err) {
     if (err instanceof DatabaseError) {
@@ -71,13 +72,8 @@ router.delete('/tentti/:examId/kysymys/:questionId', verifyToken, verifyAdminRol
     return;
   }
   try {
-    const deletedRow = await removeQuestionFromExam(dbConnPool(), examIdParam, questionIdParam);
-    if (deletedRow !== undefined) {
-      res.status(204).end();
-    }
-    else {
-      res.status(404).send({sender: 'application', message: 'tentti does not exists'});
-    }
+    const deletedCount = await removeQuestionFromExam(dbConnPool(), examIdParam, questionIdParam);
+    res.status(200).send({count: deletedCount});
   }
   catch (err) {
     res.status(500).send('Database query failed');
@@ -87,7 +83,7 @@ router.delete('/tentti/:examId/kysymys/:questionId', verifyToken, verifyAdminRol
 });
 
 /**
-* Return questions related to the exam and all data associated with a particular question in the exam,
+* Return questions related to the exam and all data but answers associated with a particular question in the exam,
 * such as question number and points.
 */
 router.get('/tentti/:examId', verifyToken, async (req, res) => 
@@ -97,17 +93,17 @@ router.get('/tentti/:examId', verifyToken, async (req, res) =>
     res.status(400).send('Invalid http request parameter');
     return;
   }
-  let questionRows = undefined;
+  let questionDataRows = undefined;
   try {
     const examIdNr = new Number(examIdParam);
-    questionRows = await fetchExamQuestions(dbConnPool(), examIdNr);
+    questionDataRows = await fetchExamQuestions(dbConnPool(), examIdNr);
   }
   catch (err) {
     res.status(500).send('Database query failed');
     console.log('Database query error:', err);
     return;
   }
-  res.status(200).send(questionRows);
+  res.status(200).send(questionDataRows);
 });
 
 /**

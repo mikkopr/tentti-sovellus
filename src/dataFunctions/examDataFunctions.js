@@ -56,7 +56,7 @@ const fetchQuestionsAndAnswersForExam = async (id) =>
 }
 
 /**
- * Fetches the questions of the exam.
+ * Fetches the questions and associated question data without answers of the exam.
  * 
  * Return an array of questions.
  * Each question has properties: id, text, number, points
@@ -89,7 +89,7 @@ const updateExam = async (exam) =>
 }
 
 /**
- * Returns the created question, question number and points if succesful.
+ * Returns the created question id, text, number and points if succesful.
  */
 const addNewQuestionToExam = async (examId) =>
 {
@@ -104,6 +104,21 @@ const addNewQuestionToExam = async (examId) =>
 	return fetchResult.data;
 }
 
+/**
+ * Returns true if the question was removed, false if the question wasn't found
+ */
+const removeQuestionFromExam = async (examId, questionId) =>
+{
+	let result = 0;
+	try {
+		result = await axios.delete(`http://localhost:8080/tenttikysymykset/tentti/${examId}/kysymys/${questionId}`, axiosConfig.getConfig());
+	}
+	catch (err) {
+		throw err;
+	}
+	return result.data.deletedCount > 0 ? true : false;
+}
+
 const updateQuestion = async (questionId, text) =>
 {
 	let fetchResult = undefined;
@@ -116,4 +131,5 @@ const updateQuestion = async (questionId, text) =>
 	}
 }
 
-export {fetchQuestionAndAnswers, fetchQuestionsForExam, fetchQuestionsAndAnswersForExam, updateExam, addNewQuestionToExam, updateQuestion};
+export {fetchQuestionAndAnswers, fetchQuestionsForExam, fetchQuestionsAndAnswersForExam, updateExam, 
+	addNewQuestionToExam, updateQuestion, removeQuestionFromExam};

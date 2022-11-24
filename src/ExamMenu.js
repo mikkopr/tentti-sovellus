@@ -9,7 +9,7 @@ const ExamMenu = (props) =>
   			return (<div key={exam.id} className='exam-menu-item' onClick={ 
 					(event) => props.onExamSelected(exam.id) }
 				>
-					{exam.nimi}
+					{exam.name}
       	</div>)
 				})
 		}
