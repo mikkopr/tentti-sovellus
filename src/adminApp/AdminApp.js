@@ -14,19 +14,24 @@ import { fetchQuestionsForExam } from '../dataFunctions/examDataFunctions';
 import ServerError from '../errors/ServerError';
 import InvalidDataError from '../errors/InvalidDataError';
 import Registration from '../Registration';
+import ErrorMessage from '../ErrorMessage'
 
-const examsDataStub = 
+const initialState = 
 {
   user: {},
   exams: [],
 	activeExam: undefined,
   selectedExam: -1,
-  isSaveRequired: false,
   failedToSave: false,
   dataFetchRequired: true,
   loggedIn: false,
   loginRequested: false,
-  failedToAuthenticate: false
+  failedToAuthenticate: false,
+	showLogin: false,
+	showRegister: false,
+	showExamList: false,
+	showError: false,
+	errorMessage: ''
 };
 
 //const STORAGE_KEY = 'examsData';
@@ -35,7 +40,7 @@ const SERVER = 'http://localhost:8080';
 
 const AdminApp = () => 
 {
-  const [examsState, dispatch] = useReducer(reducer, examsDataStub);
+  const [examsState, dispatch] = useReducer(reducer, initialState);
   //const [initialized, setInitialized] = useState(false);
 
   useEffect ( () =>
@@ -168,10 +173,6 @@ const AdminApp = () =>
 				console.log('FAILED_TO_UPDATE_DATA ', action.payload?.err?.message);
 				return {...state};
       
-			/*case 'FAILED_TO_SAVE_DATA':
-        console.log('FAILED_TO_SAVE_DATA');
-        return {...state};*/
-      
 			case 'USER_CREDENTIALS_RECEIVED':
       {
         console.log('USER_CREDENTIALS_RECEIVED');
@@ -192,22 +193,36 @@ const AdminApp = () =>
           return {...state, user: {userId: userId, email: email, role: role, token: token}, loggedIn: true, 
 						loginRequested: false, dataFetchRequired: true};
         }
-        return {...state, user: {...state.user}, loggedIn: false, loginRequested: false, failedToAuthenticate: true};
+				/*else if (responseStatus == 403 || responseStatus == 401) //TODO status?
+					return {...state, user: {...state.user}, loggedIn: false, loginRequested: false, failedToAuthenticate: true,
+						showError: true, errorMessage: 'Käyttäjätunnus tai salasana väärä'};
+				else*/
+					return {...state, user: {...state.user}, loggedIn: false, loginRequested: false, failedToAuthenticate: true,
+						showError: true, errorMessage: 'Tällaista ei pitäisi tapahtua'};
       }
       case 'FAILED_TO_VERIFY_CREDENTIALS':
         console.log('FAILED_TO_VERIFY_CREDENTIALS');
-        return {...state, user: {...state.user}, loggedIn: false, failedToAuthenticate: true};
-      case 'LOG_OUT_REQUESTED':
+				if (action.payload.response?.status == 401 || action.payload.response?.status == 403) //TODO status
+					return {...state, user: {...state.user}, loggedIn: false, failedToAuthenticate: true, 
+						showLogin: true, showError: true, errorMessage: 'Käyttäjätunnus tai salasana väärä'};
+				else {
+					const message = action.payload.response?.error?.message ? 
+						action.payload.response.error.message : 'Kirjautuminen epäonnistui'
+	        return {...state, user: {...state.user}, loggedIn: false, failedToAuthenticate: true,
+						showLogin: true, showError: true, errorMessage: message};
+				}
+      
+			case 'LOG_OUT_REQUESTED':
         console.log('LOG_OUT_REQUESTED');
         return {...state, user: {}, loggedIn: false, notAuthorized: false};
       
 			case 'SHOW_LOGIN_REQUESTED':
 				console.log('SHOW_LOGIN_REQUESTED');
-				return {...state, user: {}, loggedIn: false, showLogin: true, showRegister: false};
+				return {...state, user: {}, loggedIn: false, showLogin: true, showRegister: false, showError: false};
 			
 			case 'SHOW_REGISTRATION_REQUESTED':
 				console.log('SHOW_REGISTRATION_REQUESTED');
-				return {...state, user: {}, loggedIn: false, showLogin: false, showRegister: true};
+				return {...state, user: {}, loggedIn: false, showLogin: false, showRegister: true, showError: false};
 
 			case 'REGISTRATION_COMPLETED':
 				console.log('REGISTRATION_COMPLETED');
@@ -228,9 +243,13 @@ const AdminApp = () =>
 					return {...state, user: {}, loggedIn: false, showLogin: false, showRegister: true, duplicateEmail: true};
 				}
 				else {
-					return {...state, user: {}, loggedIn: false, showLogin: false, showRegister: true, duplicateEmail: false};
+					return {...state, user: {}, loggedIn: false, showLogin: false, showRegister: true, duplicateEmail: false, 
+						showError: true, errorMessage: 'REGISTRATION_FAILED'};
 				}
+
 			}
+			case 'HIDE_ERROR_REQUESTED':
+				return {...state, showError: false};
 			default:
         throw Error('Unknown event: ' + action.type);
     }
@@ -242,9 +261,9 @@ const AdminApp = () =>
 			{examsState.loggedIn && <input type='button' value='Kirjaudu ulos' onClick={(event) =>
         dispatch({type: 'LOG_OUT_REQUESTED'})}/>
       }
+			{examsState.showError && <ErrorMessage message={examsState.errorMessage} dispatch={dispatch}/>}
       {examsState.showRegister && <Registration dispatch={dispatch} duplicate={examsState.duplicateEmail}/>}
 			{examsState.showLogin && <Login dispatch={dispatch}/>}
-      {!examsState.loggedIn && examsState.failedToAuthenticate && <p>Käyttäjätunnus tai salasana virheellinen!</p>}
       {examsState.loggedIn && !examsState.dataFetchRequired && <ExamMenu exams={examsState.exams} onExamSelected={handleExamSelected}/>}
       {examsState.loggedIn && examsState.activeExam !== undefined && <EditExam exam={examsState.activeExam} dispatch={dispatch}/>}
       {examsState.loggedIn && examsState.failedToFetch && <p>Tietojen nouto palvelimelta epäonnistui</p>}
@@ -255,3 +274,5 @@ const AdminApp = () =>
 }
 
 export default AdminApp;
+
+//{!examsState.loggedIn && examsState.failedToAuthenticate && <p>Käyttäjätunnus tai salasana virheellinen!</p>}

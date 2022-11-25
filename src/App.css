@@ -72,3 +72,11 @@
 	height: 40px;
 	background-color: aqua;
 }
+
+.error {
+	display: flex;
+	flex-direction: row;
+	height: 50px;
+	margin: 1em;
+	background-color: lightcoral;
+}
