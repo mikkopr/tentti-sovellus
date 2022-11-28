@@ -1,7 +1,7 @@
 
 import '../App.css';
 import EditQuestion from './EditQuestion';
-import {addNewQuestionToExam, removeQuestionFromExam} from '../dataFunctions/examDataFunctions';
+import {updateExam, addNewQuestionToExam, removeQuestionFromExam} from '../dataFunctions/examDataFunctions';
 
 const EditExam = (props) => 
 {
@@ -34,9 +34,58 @@ const EditExam = (props) =>
 		}
 	}
 
+	async function handleExamNameChanged(event)
+	{
+		try {
+			const modifiedExam = {...props.exam, name: event.target.value};
+			await updateExam(modifiedExam);
+			props.dispatch({type: 'EXAM_DATA_CHANGED', payload: modifiedExam});
+		}
+		catch (err) {
+			props.dispatch({type: 'FAILED_TO_UPDATE_DATA', payload: err});
+			return;
+		}
+	}
+
+	async function handleExamBeginChanged(event)
+	{
+		
+	}
+
+	async function handleExamBeginTimeChanged(event)
+	{
+
+	}
+
+	async function handleExamEndChanged(event)
+	{
+		console.log(event.target.valueAsDate);
+	}
+
+	async function handleExamAvailableTimeChanged(event)
+	{
+
+	}
+
 	return (
 		<div className='exam'>
 			<h3>{props.exam.name}</h3>
+			<div className='background-color-aqua'>
+				<label htmlFor='name'>Nimi:</label>
+				<input type='text' id='name' value={props.exam.name}
+						onChange={(event) => handleExamNameChanged(event)}/>
+				<label htmlFor='begin'>Alkuaika:</label>
+				<input type='text' id='beginDate' value={props.exam.begin ? props.exam.begin.split('T')[0] : ''}
+						onChange={(event) => handleExamBeginChanged(event)}/>
+				<input type='text' id='beginTime' value={props.exam.begin ? props.exam.begin.split('T')[1]?.slice(0, 5) : ''}
+						onChange={(event) => handleExamBeginTimeChanged(event)}/>
+				<label htmlFor='end'>Loppuaika:</label>
+				<input type='date' id='end' value={props.exam.end ? props.exam.end : ''}
+						onChange={(event) => handleExamEndChanged(event)}/>
+				<label htmlFor='availableTime'>Tekoaika (min):</label>
+				<input type='text' id='availableTime' value={props.exam.availableTime}
+						onChange={(event) => handleExamAvailableTimeChanged(event)}/>
+			</div>
 			<div className='kysymys-lista'>
 				{props.exam.questionDataArray.map( (item) => {
 					return (

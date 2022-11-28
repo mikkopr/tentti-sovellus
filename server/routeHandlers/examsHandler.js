@@ -84,7 +84,7 @@ router.put('/:examId', verifyToken, verifyAdminRole, async (req, res) =>
     return;
   }
   const data = req.body;
-  if (data === undefined || data.nimi === undefined || data.kuvaus === undefined || data.pvm === undefined) {
+  if (data === undefined || data.name === undefined || data.description === undefined || data.availableTime === undefined) {
     res.status(400).send('Invalid http requets parameter');
     return;
   }

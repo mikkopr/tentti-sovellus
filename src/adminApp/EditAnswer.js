@@ -61,21 +61,19 @@ const EditAnswer = (props) =>
 
 	return (
     <div className='edit-answer'>
-        <div>
-            <input type='checkbox' 
-                checked={props.answer.correct}
-                onChange={(event) => handleAnswerCheckedStateChanged(event.target.checked)}
-            />
-        </div>
-        <div>
-            <input type='textbox' value={props.answer.text}
-							onChange={(event) => handleAnswerTextChanged(event.target.value)}
-							onBlur={(event) => handleAnswerTextBlur(event.target.value)}
-            />
-        </div>
-				<div>
-					<input type='button' value='-' onClick={(event) => handleDeleteAnswerClicked(props.answer)} />
-				</div>
+        
+			<input type='checkbox' 
+					checked={props.answer.correct}
+					onChange={(event) => handleAnswerCheckedStateChanged(event.target.checked)}
+			/>
+	
+			<input type='textbox' value={props.answer.text}
+				onChange={(event) => handleAnswerTextChanged(event.target.value)}
+				onBlur={(event) => handleAnswerTextBlur(event.target.value)}
+			/>
+			<div>
+				<input type='button' value='-' onClick={(event) => handleDeleteAnswerClicked(props.answer)} />
+			</div>
     </div>);
 }
 

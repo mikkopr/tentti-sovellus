@@ -120,24 +120,21 @@ const EditQuestion = (props) =>
 
 	return (
     <div className="kysymys">
-        <div>
-            <input type='textbox' className="kysymys-teksti" value={state.text}
-                onChange={event => handleQuestionTextChanged(event.target.value)}
-								onBlur={(event) => handleQuestionBlur(event)}
-            />
-        </div>
-        <div>
-            {state.answers.map( (answer) => {
-                return (
-                    <EditAnswer
-                        key={answer.id}
-                        answer={answer}
-												questionId={state.questionId}
-                        dispatch={dispatch}
-                    /> );
-                })
-            }
-        </div>
+        
+			<input type='textbox' className="kysymys-teksti" value={state.text}
+					onChange={event => handleQuestionTextChanged(event.target.value)}
+					onBlur={(event) => handleQuestionBlur(event)}
+			/>
+      {state.answers.map( (answer) => {
+					return (
+							<EditAnswer
+									key={answer.id}
+									answer={answer}
+									questionId={state.questionId}
+									dispatch={dispatch}
+							/> );
+					})
+			}
         <div className="button-row">
             <input type='button' className='add-button' value='+'
                 onClick={event => handleAddAnswerClicked()}

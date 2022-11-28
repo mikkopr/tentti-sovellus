@@ -14,7 +14,7 @@ const addExam = async (pool, data) =>
 
 const fetchExam = async (pool, id) =>
 {
-  const text = "SELECT * FROM tentti WHERE id=$1";
+  const text = "SELECT id, nimi AS name, kuvaus AS description, alkuaika AS begin, loppuaika AS end, tekoaika AS availableTime FROM tentti id=$1";
   const values = [id];
   try {
     const result = await pool.query(text, values);
@@ -28,8 +28,7 @@ const fetchExam = async (pool, id) =>
 
 const fetchExams = async (pool) =>
 {
-	//TODO more colums
-  const text = "SELECT id, nimi AS name, kuvaus AS description FROM tentti";
+  const text = "SELECT id, nimi AS name, kuvaus AS description, alkuaika AS begin, loppuaika AS end, tekoaika_mins AS availableTime FROM tentti";
   try {
     const result = await pool.query(text);
     return result.rows;
@@ -41,9 +40,17 @@ const fetchExams = async (pool) =>
 
 const updateExam = async (pool, examId, data) =>
 {
-  //Without returning clause returns the count of the upfated rows
-  const text = "UPDATE tentti SET nimi=$1, kuvaus=$2, pvm=$3 WHERE id=$4 RETURNING *";
-  const values = [data.nimi, data.kuvaus, new Date(data.pvm), examId];
+  let text = "UPDATE tentti SET nimi=$2, kuvaus=$3, tekoaika=$4" //, alkuaika=$5, loppuaika=$6 WHERE id=$1 RETURNING *";
+	const values = [examId, data.name, data.description, data.availableTime]; // new Date(data.begin), new Date(data.end), ];
+	if (data.begin) {
+		text += ",alkuaika=$5";
+		values.push(new Date(data.begin));
+	}
+	if (data.end) {
+		text += ",loppuaika=$6";
+		values.push(new Date(data.end));
+	}
+	text += "WHERE id=$1 RETURNING id, nimi AS name, kuvaus AS description, alkuaika AS begin, loppuaika AS end, tekoaika AS availableTime";  
   const result = await pool.query(text, values);
   return result.rows[0];
 }

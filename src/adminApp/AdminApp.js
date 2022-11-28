@@ -111,6 +111,11 @@ const AdminApp = () =>
 		return stateCopy;
 	}
 
+	function handleExamDataChanged(state, payload)
+	{
+		return {...state, activeExam: {...state.activeExam, name: payload.name, description: payload.description, pvm: payload.pvm}};
+	}
+
 	function handleNewQuestionAddedToExam(state, payload)
 	{
 		console.log('handleNewQuestionAddedToExam(...)');
@@ -141,6 +146,10 @@ const AdminApp = () =>
 			case 'ACTIVE_EXAM_CHANGED':
 				console.log('ACTIVE_EXAM_CHANGED');
 				return handleActiveExamChanged(state, action.payload);
+
+			case 'EXAM_DATA_CHANGED':
+				console.log('EXAM_DATA_CHANGED');
+				return handleExamDataChanged(state, action.payload);
 
 			case 'NEW_QUESTION_ADDED_TO_EXAM':
 				console.log('NEW_QUESTION_ADDED_TO_EXAM');

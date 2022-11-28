@@ -1,3 +1,16 @@
+
+div {
+	padding: 0.5em;
+}
+
+input {
+	margin-right: 0.5em;
+}
+
+label {
+	margin-right: 0.5em;
+}
+
 .App {
   /*text-align: left;*/
   background-color: azure;
@@ -31,7 +44,7 @@
 
 .kysymys {
   width: 600px;
-  padding: 0.5em;
+	padding-left: 0.5em;
   border-style: inset;
   border-color: aliceblue;
   border-width: 0.1em;
@@ -46,7 +59,7 @@
 .edit-answer {
   display: flex;
   flex-direction: row;
-  padding: 0.5em;
+  padding-left: 0.5em;
 }
 
 .button-row {
@@ -79,4 +92,8 @@
 	height: 50px;
 	margin: 1em;
 	background-color: lightcoral;
+}
+
+.background-color-aqua {
+	background-color: aqua;
 }

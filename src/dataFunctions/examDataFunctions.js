@@ -80,7 +80,7 @@ const updateExam = async (exam) =>
 {
 	let fetchResult = undefined;
 	try {
-		fetchResult = await axios.put('http://localhost:8080/tentit/' + exam.id, axiosConfig.getConfig());
+		fetchResult = await axios.put('http://localhost:8080/tentit/' + exam.id, exam, axiosConfig.getConfig());
 	}
 	catch (err) {
 		throw err;
