@@ -3,7 +3,6 @@ const {dbConnPool} = require('./db');
 const jwt = require('jsonwebtoken');
 const roles = require('./roles');
 
-
 /**
  * Returns true if the user having the email is in the role.
  */
@@ -121,6 +120,24 @@ const validateReqParamId = (value) =>
   return (match != null) ? value : undefined;
 }
 
+const validateNumber = (value, min, max) =>
+{
+	const num = Number(value);
+	if (isNaN(num) || num < min || num > max)
+		return false;
+	else
+		return true;
+}
+
+const validateDate = (value) =>
+{
+	if (!value || typeof value !== 'string')
+		return false;
+	const regExp = /\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}([zZ]|\.\d{1,3}[zZ])/;
+	const match = value.match(regExp);
+	return match ? true : false;
+}
+
 /*const validateQueryValueString = (value) => 
 {
   if (value === undefined || value.length > 200) {
@@ -154,4 +171,5 @@ const validateQueryValueNumber = (value, min, max) =>
   return (num >= min && num <= max) ? value : undefined;
 }*/
 
-module.exports = {verifyToken, verifyAdminRole, validateRegistrationEmailAndPassword, validateReqParamId, userInRole};
+module.exports = {verifyToken, verifyAdminRole, validateRegistrationEmailAndPassword, validateReqParamId, validateNumber, 
+	validateDate,  userInRole};

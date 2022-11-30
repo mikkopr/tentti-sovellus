@@ -276,7 +276,7 @@ const AdminApp = () =>
       {examsState.showRegister && <Registration dispatch={dispatch} duplicate={examsState.duplicateEmail}/>}
 			{examsState.showLogin && <Login dispatch={dispatch}/>}
       {examsState.loggedIn && !examsState.dataFetchRequired && <ExamMenu exams={examsState.exams} onExamSelected={handleExamSelected}/>}
-      {examsState.loggedIn && examsState.activeExam !== undefined && <EditExam exam={examsState.activeExam} dispatch={dispatch}/>}
+      {examsState.loggedIn && examsState.activeExam !== undefined && <EditExam key={examsState.activeExam.id} exam={examsState.activeExam} dispatch={dispatch}/>}
       {examsState.loggedIn && examsState.failedToFetch && <p>Tietojen nouto palvelimelta epäonnistui</p>}
       {examsState.loggedIn && examsState.failedToSave && <p>Tietojen tallennus palvelimelle epäonnistui</p>}
       {examsState.loggedIn && examsState.notAuthorized && <p>Ei valtuuksia</p>}

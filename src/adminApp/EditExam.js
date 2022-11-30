@@ -2,7 +2,7 @@
 import '../App.css';
 import EditQuestion from './EditQuestion';
 import {updateExam, addNewQuestionToExam, removeQuestionFromExam} from '../dataFunctions/examDataFunctions';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { type } from '@testing-library/user-event/dist/type';
 
 // TODO Move question components out because state updates rerender those in vain
@@ -11,16 +11,11 @@ const EditExam = (props) =>
 {
 	console.log("EditExam");
 
-	const [modifiedState, setModifiedState] = useState(
-		{	modified: false, invalidBeginDate: false, invalidBeginTime: false,
-			invalidEndDate: false, invalidEndTime: false, invalidAvailableTime: false,
-			name: props.exam.name, description: props.exam.description,
-			beginDate: dateStringFromIsoString(props.exam.begin), beginTime: timeStringFromIsoString(props.exam.begin),
-			endDate: dateStringFromIsoString(props.exam.end), endTime: timeStringFromIsoString(props.exam.end),
-			available_time: props.exam.available_time 
-		});
-	
-	console.log("EditExam after useState(...) called");
+	const [modifiedState, setModifiedState] = useState(modifiedStateFromProps(props));
+
+	useEffect( () => {
+		console.log("EditExam useEffect(...) first run");
+	}, []);
 
 	async function handleAddQuestionClicked(examId)
 	{
@@ -57,7 +52,18 @@ const EditExam = (props) =>
 			//NOTE Can't have a variable having the same name as a function const modifiedExam = modifiedExam();
 			const editedExam = modifiedExam();
 			await updateExam(editedExam);
-			setModifiedState({...modifiedState, modified: false});
+			setModifiedState(modifiedStateFromProps(props));
+			//TODO undefined props
+			//Use function version of useSate to sync the local state with props
+			//setModifiedState((state, props) => {return modifiedStateFromProps(props)});
+			/*setModifiedState((state, props) => (
+				{modified: false, invalidBeginDate: false, invalidBeginTime: false,
+				invalidEndDate: false, invalidEndTime: false, invalidAvailableTime: false,
+				name: props.exam.name, description: props.exam.description,
+				beginDate: dateStringFromIsoString(props.exam.begin), beginTime: timeStringFromIsoString(props.exam.begin),
+				endDate: dateStringFromIsoString(props.exam.end), endTime: timeStringFromIsoString(props.exam.end),
+				available_time: props.exam.available_time}) );*/
+		
 			props.dispatch({type: 'EXAM_DATA_CHANGED', payload: editedExam});
 		}
 		catch (err) {
@@ -65,48 +71,6 @@ const EditExam = (props) =>
 			return;
 		}
 	}
-
-	/**
-	 * Returns an exam object that is created using the current values in the input elements.
-	 * Assumes that input elements have valid values.
-	 * 
-	 * Precondition: Foreach date dateValid(date)==true && foreach time timeValid(time)==true
-	 * 
-	 */
-	function modifiedExam()
-	{
-		const examData = {};
-		//Begin
-		if (modifiedState.beginDate === '' || modifiedState.beginTime === '') {
-			examData.begin = null;
-		}
-		else {
-			//This component accepts also period as a separator
-			const dateParts = modifiedState.beginDate.split('-');
-			const timeParts = modifiedState.beginTime.split(':');
-			//TODO reg exps don't work
-			//const dateParts = modifiedState.beginDate.split('/[-.]/');
-			//const timeParts = modifiedState.beginTime.split('/[:.]/');
-			let begin = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], timeParts[0], timeParts[1]);
-			examData.begin = begin.toISOString();
-		}
-		//End
-		if (modifiedState.endDate === '' || modifiedState.endTime === '') {
-			examData.end = null;
-		}
-		else {
-			//This component accepts also period as a separator
-			const dateParts = modifiedState.endDate.split('-');
-			const timeParts = modifiedState.endTime.split(':');
-			let end = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], timeParts[0], timeParts[1]);
-			examData.end = end.toISOString();
-		}
-		examData.available_time = modifiedState.available_time;
-		examData.name = modifiedState.name;
-		examData.description = modifiedState.description;
-		examData.id = props.exam.id;
-		return examData;
-	}	
 
 	function handleExamNameChanged(value)
 	{
@@ -154,6 +118,55 @@ const EditExam = (props) =>
 		else
 			setModifiedState({...modifiedState, modified: true, invalidAvailableTime: true, available_time: value});
 	}
+
+	function modifiedStateFromProps(currentProps)
+	{
+		return {modified: false, invalidBeginDate: false, invalidBeginTime: false,
+			invalidEndDate: false, invalidEndTime: false, invalidAvailableTime: false,
+			name: currentProps.exam.name, description: currentProps.exam.description,
+			beginDate: dateStringFromIsoString(currentProps.exam.begin), beginTime: timeStringFromIsoString(currentProps.exam.begin),
+			endDate: dateStringFromIsoString(currentProps.exam.end), endTime: timeStringFromIsoString(currentProps.exam.end),
+			available_time: currentProps.exam.available_time};
+	}
+
+	/**
+	 * Returns an exam object that is created using the current values in the input elements.
+	 * Assumes that input elements have valid values.
+	 * 
+	 * Precondition: Foreach date dateValid(date)==true && foreach time timeValid(time)==true
+	 * 
+	 */
+	function modifiedExam()
+	{
+		const examData = {};
+		//Begin
+		if (modifiedState.beginDate === '' || modifiedState.beginTime === '') {
+			examData.begin = null;
+		}
+		else {
+			//This component accepts also period as a separator
+			const dateParts = modifiedState.beginDate.split(/[-.]/);
+			const timeParts = modifiedState.beginTime.split(/[:.]/);
+			let begin = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], timeParts[0], timeParts[1]);
+			examData.begin = begin.toISOString();
+		}
+		//End
+		if (modifiedState.endDate === '' || modifiedState.endTime === '') {
+			examData.end = null;
+		}
+		else {
+			//This component accepts also period as a separator
+			const dateParts = modifiedState.endDate.split(/[-.]/);
+			const timeParts = modifiedState.endTime.split(/[:.]/);
+			let end = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], timeParts[0], timeParts[1]);
+			examData.end = end.toISOString();
+		}
+		examData.available_time = modifiedState.available_time;
+		examData.name = modifiedState.name;
+		examData.description = modifiedState.description;
+		examData.id = props.exam.id;
+		return examData;
+	 }
 
 	function inputsValid()
 	{
@@ -221,7 +234,6 @@ function timeValid(value)
 	let match = value.match(/^\s*\d{1,2}[:.]\d{2}\s*$/);
 	if (!match)
 		return false;
-	//TODO split works?
 	let parts =  match[0].split(/[:.]/);
 	let hours = new Number(parts[0]);
 	let minutes = new Number(parts[1]);

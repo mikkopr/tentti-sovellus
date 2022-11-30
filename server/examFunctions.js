@@ -14,7 +14,7 @@ const addExam = async (pool, data) =>
 
 const fetchExam = async (pool, id) =>
 {
-  const text = "SELECT id, nimi AS name, kuvaus AS description, alkuaika AS begin, loppuaika AS end, tekoaika_mins AS availableTime FROM tentti id=$1";
+  const text = "SELECT id, nimi AS name, kuvaus AS description, alkuaika AS begin, loppuaika AS end, tekoaika_mins AS available_time FROM tentti WHERE id=$1";
   const values = [id];
   try {
     const result = await pool.query(text, values);

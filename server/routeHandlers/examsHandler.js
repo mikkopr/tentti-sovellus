@@ -3,9 +3,11 @@ const express = require('express');
 
 const {dbConnPool} = require('../db');
 const {fetchExams, fetchExam, addExam, updateExam} = require('../examFunctions');
-const {verifyToken, verifyAdminRole, validateReqParamId} = require('../validateFunctions');
+const {verifyToken, verifyAdminRole, validateReqParamId, validateNumber, validateDate} = require('../validateFunctions');
 
 const router = express.Router();
+
+const MAX_VALUE_SMALL_INT = 32768;
 
 /**
  * Handles /tentit
@@ -58,10 +60,11 @@ router.get('/:examId', verifyToken, async (req, res) =>
  */
 router.post('/', verifyToken, verifyAdminRole, async (req, res) => 
 {  
-  //TODO test
   const data = req.body;
-  const date = new Date(data?.pvm); //TODO undefined?
-  if (data === undefined || data.nimi === undefined || data.kuvaus === undefined || date === undefined) {
+	if (data === undefined || data.name === undefined || data.description === undefined || 
+		!validateNumber(data.available_time, 0, MAX_VALUE_SMALL_INT) ||
+		!validateDate(data.begin) || !validateDate(data.end))
+	{
     res.status(400).send('Invalid http requets parameter');
     return;
   }
@@ -84,7 +87,10 @@ router.put('/:examId', verifyToken, verifyAdminRole, async (req, res) =>
     return;
   }
   const data = req.body;
-  if (data === undefined || data.name === undefined || data.description === undefined || data.available_time === undefined) {
+  if (data === undefined || data.name === undefined || data.description === undefined || 
+			!validateNumber(data.available_time, 0, MAX_VALUE_SMALL_INT) ||
+			!validateDate(data.begin) || !validateDate(data.end))
+	{
     res.status(400).send('Invalid http requets parameter');
     return;
   }
