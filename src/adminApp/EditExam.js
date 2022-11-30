@@ -52,8 +52,12 @@ const EditExam = (props) =>
 			//NOTE Can't have a variable having the same name as a function const modifiedExam = modifiedExam();
 			const editedExam = modifiedExam();
 			await updateExam(editedExam);
-			setModifiedState(modifiedStateFromProps(props));
-			//TODO undefined props
+			//Set modified property to false. When exam changed the component is recreated from scratch because
+			//the component has id as a key
+			setModifiedState({...modifiedState, modified: false});
+
+			//setModifiedState(modifiedStateFromProps(props));
+			//TODO undefined props when tried to use function version of the state setter
 			//Use function version of useSate to sync the local state with props
 			//setModifiedState((state, props) => {return modifiedStateFromProps(props)});
 			/*setModifiedState((state, props) => (
