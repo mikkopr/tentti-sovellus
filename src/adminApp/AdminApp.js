@@ -113,7 +113,9 @@ const AdminApp = () =>
 
 	function handleExamDataChanged(state, payload)
 	{
-		return {...state, activeExam: {...state.activeExam, name: payload.name, description: payload.description, pvm: payload.pvm}};
+		return {...state, 
+			activeExam: {...state.activeExam, name: payload.name, description: payload.description,
+				begin: payload.begin, end: payload.end, available_time: payload.available_time}};
 	}
 
 	function handleNewQuestionAddedToExam(state, payload)
