@@ -2,10 +2,22 @@
 import '../App.css';
 import EditQuestion from './EditQuestion';
 import {updateExam, addNewQuestionToExam, removeQuestionFromExam} from '../dataFunctions/examDataFunctions';
+import { useState } from 'react';
+
+// TODO Move question components out because state updates rerender those in vain
 
 const EditExam = (props) => 
 {
 	console.log("EditExam");
+
+	const [modifiedState, setModifiedState] = useState(
+		{	saveRequired: false, invalidBeginDate: false, invalidBeginTime: false,
+			invalidEndDate: false, invalidEndTime: false, invalidAvailableTime: false,
+			name: props.exam.name, description: props.exam.description,
+			beginDate: dateStringFromIsoString(props.exam.begin), beginTime: timeStringFromIsoString(props.exam.begin),
+			endDate: dateStringFromIsoString(props.exam.end), endTime: timeStringFromIsoString(props.exam.end),
+			available_time: props.exam.available_time 
+		});
 
 	async function handleAddQuestionClicked(examId)
 	{
@@ -34,12 +46,17 @@ const EditExam = (props) =>
 		}
 	}
 
-	async function handleExamNameChanged(event)
+	async function handleUpdateDataClicked()
 	{
 		try {
-			const modifiedExam = {...props.exam, name: event.target.value};
-			await updateExam(modifiedExam);
-			props.dispatch({type: 'EXAM_DATA_CHANGED', payload: modifiedExam});
+			if (modifiedState.invalidBeginDate || modifiedState.invalidEndDate ||
+					modifiedState.invalidBeginTime || modifiedState.invalidEndTime)
+				return;
+			//NOTE Can't have a variable having the same name as a function const modifiedExam = modifiedExam();
+			const editedExam = modifiedExam();
+			await updateExam(editedExam);
+			setModifiedState({...modifiedState, saveRequired: false});
+			props.dispatch({type: 'EXAM_DATA_CHANGED', payload: editedExam});
 		}
 		catch (err) {
 			props.dispatch({type: 'FAILED_TO_UPDATE_DATA', payload: err});
@@ -47,24 +64,89 @@ const EditExam = (props) =>
 		}
 	}
 
-	async function handleExamBeginChanged(event)
+	/**
+	 * Returns an exam object that is created using the current values in the input elements.
+	 * Assumes that input elements have valid values.
+	 * 
+	 * Precondition: Foreach date dateValid(date)==true && foreach time timeValid(time)==true
+	 * 
+	 */
+	function modifiedExam()
 	{
-		
+		const examData = {};
+		//Begin
+		if (modifiedState.beginDate === '' || modifiedState.beginTime === '') {
+			examData.begin = null;
+		}
+		else {
+			//This component accepts also period as a separator
+			const dateParts = modifiedState.beginDate.split('/[-.]/');
+			const timeParts = modifiedState.beginTime.split('/:./');
+			let begin = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], timeParts[0], timeParts[1]);
+			examData.begin = begin;
+		}
+		//End
+		if (modifiedState.endDate === '' || modifiedState.endTime === '') {
+			examData.end = null;
+		}
+		else {
+			//This component accepts also period as a separator
+			const dateParts = modifiedState.endDate.split('/[-.]/');
+			const timeParts = modifiedState.endTime.split('/:./');
+			let end = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], timeParts[0], timeParts[1]);
+			examData.end = end;
+		}
+		examData.available_time = modifiedState.available_time;
+		examData.name = modifiedState.name;
+		examData.description = modifiedState.description;
+		return examData;
+	}	
+
+	function handleExamNameChanged(value)
+	{
+		setModifiedState({...modifiedState, saveRequired: true, name: value});
 	}
 
-	async function handleExamBeginTimeChanged(event)
+	function handleExamBeginChanged(value)
 	{
-
+		//If the date input is cleared the value is ''
+		//Empty date is ok
+		if (value === '' || dateValid(value)) {
+			setModifiedState({...modifiedState, saveRequired: true, invalidBeginDate: false, beginDate: value});
+		}
+		else {
+			//If normal text box, date can be invalid
+			setModifiedState({...modifiedState, saveRequired: true, invalidBeginDate: true, beginDate: value});
+		}
 	}
 
-	async function handleExamEndChanged(event)
+	function handleExamBeginTimeChanged(value)
 	{
-		console.log(event.target.valueAsDate);
+		if (timeValid(value))
+			setModifiedState({...modifiedState, saveRequired: true, invalidBeginTime: false, beginTime: value});
+		else
+			setModifiedState({...modifiedState, saveRequired: true, invalidBeginTime: true, beginTime: value});
 	}
 
-	async function handleExamAvailableTimeChanged(event)
+	function handleExamEndChanged(value)
 	{
+		setModifiedState({...modifiedState, saveRequired: true, endDate: value});
+	}
 
+	function handleExamEndTimeChanged(value)
+	{
+		if (timeValid(value))
+			setModifiedState({...modifiedState, saveRequired: true, invalidEndTime: false, endTime: value});
+		else
+			setModifiedState({...modifiedState, saveRequired: true, invalidEndTime: true, endTime: value});
+	}
+
+	function handleExamAvailableTimeChanged(value)
+	{
+		if (isPositiveNumber(value, 32768))
+			setModifiedState({...modifiedState, saveRequired: true, invalidAvailableTime: false, available_time: value});
+		else
+			setModifiedState({...modifiedState, saveRequired: true, invalidAvailableTime: true, available_time: value});
 	}
 
 	return (
@@ -72,19 +154,25 @@ const EditExam = (props) =>
 			<h3>{props.exam.name}</h3>
 			<div className='background-color-aqua'>
 				<label htmlFor='name'>Nimi:</label>
-				<input type='text' id='name' value={props.exam.name}
-						onChange={(event) => handleExamNameChanged(event)}/>
+				<input type='text' id='name' value={modifiedState.name}
+						onChange={(event) => handleExamNameChanged(event.target.value)}/>
 				<label htmlFor='begin'>Alkuaika:</label>
-				<input type='text' id='beginDate' value={props.exam.begin ? props.exam.begin.split('T')[0] : ''}
-						onChange={(event) => handleExamBeginChanged(event)}/>
-				<input type='text' id='beginTime' value={props.exam.begin ? props.exam.begin.split('T')[1]?.slice(0, 5) : ''}
-						onChange={(event) => handleExamBeginTimeChanged(event)}/>
+				<input type='date' id='beginDate' value={modifiedState.beginDate}
+						onChange={(event) => handleExamBeginChanged(event.target.value)}/>
+				<input className={modifiedState.invalidBeginTime ? 'invalid-input' : ''} type='text' id='beginTime' value={modifiedState.beginTime}
+						onChange={(event) => handleExamBeginTimeChanged(event.target.value)}/>
 				<label htmlFor='end'>Loppuaika:</label>
-				<input type='date' id='end' value={props.exam.end ? props.exam.end : ''}
-						onChange={(event) => handleExamEndChanged(event)}/>
+				<input type='date' id='end' value={modifiedState.endDate}
+						onChange={(event) => handleExamEndChanged(event.target.value)}/>
+				<input type='text' id='endTime' value={modifiedState.endTime}
+						onChange={(event) => handleExamEndTimeChanged(event.target.value)}/>
 				<label htmlFor='availableTime'>Tekoaika (min):</label>
-				<input type='text' id='availableTime' value={props.exam.availableTime}
-						onChange={(event) => handleExamAvailableTimeChanged(event)}/>
+				<input type='text' id='availableTime' value={modifiedState.available_time}
+						onChange={(event) => handleExamAvailableTimeChanged(event.target.value)}/>
+				{modifiedState.saveRequired && (modifiedState.invalidBeginTime || modifiedState.invalidEndTime) &&
+					<button type='button' disabled onClick={() => handleUpdateDataClicked()}>Save</button>}
+				{modifiedState.saveRequired && !modifiedState.invalidBeginTime && !modifiedState.invalidEndTime &&
+					<button type='button' onClick={() => handleUpdateDataClicked()}>Save</button>}
 			</div>
 			<div className='kysymys-lista'>
 				{props.exam.questionDataArray.map( (item) => {
@@ -110,5 +198,89 @@ const EditExam = (props) =>
 		</div>
 	);
 };
+
+/**
+ * Returns true if the value is [h]h:mm or [h]h.mm and hours and minutes 0 <= value < 60
+ * Spaces allowed at begin and end.
+ */
+function timeValid(value)
+{
+	if (!value)
+		return false;
+	let match = value.match(/^\s*\d{1,2}[:.]\d{2}\s*$/);
+	if (!match)
+		return false;
+	let parts =  match[0].split(/[:.]/);
+	let hours = new Number(parts[0]);
+	let minutes = new Number(parts[1]);
+	return (hours >= 0 && hours < 60 && minutes >= 0 && minutes < 60);
+}
+
+/**
+ * Returns true if the value is dddd-dd-dd or dddd.dd.dd, spaces allowed at begin and end
+ *
+ * TODO ranges
+ */
+function dateValid(value)
+{
+	if (!value)
+		return false;
+	return value.match(/^\s*\d{4}[-.]\d{2}[-.]\d{2}\s*$/);
+}
+
+/**
+ * Returns the date part of the date iso string
+ * 
+ * If the argument is undefined or null or doesn't contain dddd-dd-dd returns an empty string
+ */
+function dateStringFromIsoString(isoString)
+{
+	if (!isoString)
+		return '';
+	let match = isoString.match(/\d{4}-\d{2}-\d{2}/);
+	return match ? match[0] : '';
+}
+
+/**
+ * Return true if value is number and 0 <= value <= max
+ * 
+ * Pecondition: Number(max) !== NaN
+ */
+function isPositiveNumber(value, max)
+{
+	let num = Number(value);
+	if (num === NaN || num > max)
+		return false;
+	else
+		return true;
+}
+
+/**
+ * Returns the hours and minutes as a string 'dd:dd' in the local time zone.
+ * 
+ * If the argument is undefined or null or a date object can't be created using it as an argument
+ * (The argument isn't iso 8601 date string) returns an empty string.
+ */
+function timeStringFromIsoString(isoString)
+{
+	if (!isoString)
+		return '';
+	//Convert the given date to the local time zone
+	let localDate = new Date(isoString);
+	if (!localDate || localDate.toString() === 'Invalid Date') {
+		return '';
+	}
+	return paddedTimeComponent(localDate.getHours()) + ':' + paddedTimeComponent(localDate.getMinutes());
+}
+
+/**
+ * If the argument < 10 pads with one zero.
+ */
+function paddedTimeComponent(timeComponent)
+{
+	if (timeComponent < 10)
+		return '0' + timeComponent;
+	return timeComponent;
+}
 
 export default EditExam;

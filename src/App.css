@@ -97,3 +97,8 @@ label {
 .background-color-aqua {
 	background-color: aqua;
 }
+
+.invalid-input {
+	border-color: lightcoral;
+	border-width: medium;
+}
