@@ -113,9 +113,14 @@ const AdminApp = () =>
 
 	function handleExamDataChanged(state, payload)
 	{
-		return {...state, 
-			activeExam: {...state.activeExam, name: payload.name, description: payload.description,
-				begin: payload.begin, end: payload.end, available_time: payload.available_time}};
+		console.log('handleExamDataChanged(...)');
+		const stateCopy = {...state, exams: [...state.exams]};
+		const examIndex = stateCopy.exams.findIndex( (item) => item.id == payload.id );
+		stateCopy.exams[examIndex] = {...stateCopy.exams[examIndex], name: payload.name, description: payload.description,
+			begin: payload.begin, end: payload.end, available_time: payload.available_time};
+		stateCopy.activeExam = {...stateCopy.activeExam, name: payload.name, description: payload.description,
+			begin: payload.begin, end: payload.end, available_time: payload.available_time};
+		return stateCopy;
 	}
 
 	function handleNewQuestionAddedToExam(state, payload)
@@ -285,5 +290,3 @@ const AdminApp = () =>
 }
 
 export default AdminApp;
-
-//{!examsState.loggedIn && examsState.failedToAuthenticate && <p>Käyttäjätunnus tai salasana virheellinen!</p>}

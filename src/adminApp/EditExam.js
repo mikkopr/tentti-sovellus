@@ -3,9 +3,6 @@ import '../App.css';
 import EditQuestion from './EditQuestion';
 import {updateExam, addNewQuestionToExam, removeQuestionFromExam} from '../dataFunctions/examDataFunctions';
 import { useEffect, useState } from 'react';
-import { type } from '@testing-library/user-event/dist/type';
-
-// TODO Move question components out because state updates rerender those in vain
 
 const EditExam = (props) => 
 {
@@ -52,17 +49,13 @@ const EditExam = (props) =>
 			//NOTE Can't have a variable having the same name as a function const modifiedExam = modifiedExam();
 			const editedExam = modifiedExam();
 			await updateExam(editedExam);
-			setModifiedState(modifiedStateFromProps(props));
-			//TODO undefined props
+			//Set modified property to false. When exam changed the component is recreated from scratch because
+			//the component has id as a key
+			setModifiedState({...modifiedState, modified: false});
+
+			//TODO undefined props when tried to use function version of the state setter
 			//Use function version of useSate to sync the local state with props
 			//setModifiedState((state, props) => {return modifiedStateFromProps(props)});
-			/*setModifiedState((state, props) => (
-				{modified: false, invalidBeginDate: false, invalidBeginTime: false,
-				invalidEndDate: false, invalidEndTime: false, invalidAvailableTime: false,
-				name: props.exam.name, description: props.exam.description,
-				beginDate: dateStringFromIsoString(props.exam.begin), beginTime: timeStringFromIsoString(props.exam.begin),
-				endDate: dateStringFromIsoString(props.exam.end), endTime: timeStringFromIsoString(props.exam.end),
-				available_time: props.exam.available_time}) );*/
 		
 			props.dispatch({type: 'EXAM_DATA_CHANGED', payload: editedExam});
 		}
