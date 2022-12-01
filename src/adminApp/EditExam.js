@@ -14,33 +14,6 @@ const EditExam = (props) =>
 		console.log("EditExam useEffect(...) first run");
 	}, []);
 
-	/*async function handleAddQuestionClicked(examId)
-	{
-		let addedQuestionData = undefined;
-		try {
-			addedQuestionData = await addNewQuestionToExam(examId);
-			props.dispatch({type: 'NEW_QUESTION_ADDED_TO_EXAM', 
-				payload: {examId: examId, questionData: addedQuestionData} });
-		}
-		catch (err) {
-			props.dispatch({type: 'FAILED_TO_UPDATE_DATA', payload: err});
-			return;
-		}
-	}
-
-	async function handleRemoveQuestionClicked(questionId)
-	{
-		try {
-			//Its ok to try to remove nonexixting question
-			await removeQuestionFromExam(props.exam.id, questionId);
-			props.dispatch({type: 'QUESTION_REMOVED_FROM_EXAM', payload: {examId: props.exam.id, questionId: questionId}});
-		}
-		catch (err) {
-			props.dispatch({type: 'FAILED_TO_UPDATE_DATA', payload: err});
-			return;
-		}
-	}*/
-
 	async function handleUpdateDataClicked()
 	{
 		try {

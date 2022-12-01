@@ -2,6 +2,7 @@
 import '../App.css';
 import {addNewQuestionToExam, removeQuestionFromExam} from '../dataFunctions/examDataFunctions';
 import EditQuestion from './EditQuestion';
+import QuestionHeader from './QuestionHeader';
 
 const QuestionList = (props) =>
 {
@@ -26,7 +27,7 @@ const QuestionList = (props) =>
 		try {
 			//Its ok to try to remove nonexisting question
 			await removeQuestionFromExam(props.exam.id, questionId);
-			props.dispatch({type: 'QUESTION_REMOVED_FROM_EXAM', payload: {examId: props.exam.id, questionId: questionId}});
+			props.dispatch({type: 'QUESTION_REMOVED_FROM_EXAM', payload: {examId: props.examId, questionId: questionId}});
 		}
 		catch (err) {
 			props.dispatch({type: 'FAILED_TO_UPDATE_DATA', payload: err});
@@ -40,6 +41,8 @@ const QuestionList = (props) =>
 		{props.questionDataArray.map( (item) => {
 			return (
 				<div key={item.id}>
+					<QuestionHeader examId={props.examId} questionId={item.id} number={item.number} points={item.points}
+						dispatch={props.dispatch}/>
 					<EditQuestion
 						questionId={item.id}
 						dispatch={props.dispatch}

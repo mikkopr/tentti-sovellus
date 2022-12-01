@@ -131,5 +131,18 @@ const updateQuestion = async (questionId, text) =>
 	}
 }
 
+const updateQuestionDataForExam = async (examId, questionId, number, points) =>
+{
+	let fetchResult = undefined;
+	try {
+		fetchResult = await axios.put(`http://localhost:8080/tenttikysymykset/tentti/${examId}/kysymys/${questionId}`, 
+			{number: number, points: points} , axiosConfig.getConfig());
+		return fetchResult.data;
+	}
+	catch (err) {
+		throw err;
+	}
+}
+
 export {fetchQuestionAndAnswers, fetchQuestionsForExam, fetchQuestionsAndAnswersForExam, updateExam, 
-	addNewQuestionToExam, updateQuestion, removeQuestionFromExam};
+	addNewQuestionToExam, updateQuestion, updateQuestionDataForExam, removeQuestionFromExam};

@@ -142,6 +142,22 @@ const AdminApp = () =>
 		return stateCopy;
 	}
 
+	function handlequestionNumberChanged(state, payload)
+	{
+		const stateCopy = {...state, exams: [...state.exams], questionDataArray: [...state.questionDataArray]};
+		const questionIndex = stateCopy.questionDataArray.findIndex( (item => item.id == payload.questionId) );
+		stateCopy.questionDataArray[questionIndex].number = payload.number;
+		return stateCopy;
+	}
+
+	function handlequestionPointsChanged(state, payload)
+	{
+		const stateCopy = {...state, exams: [...state.exams], questionDataArray: [...state.questionDataArray]};
+		const questionIndex = stateCopy.questionDataArray.findIndex( (item => item.id == payload.questionId) );
+		stateCopy.questionDataArray[questionIndex].points = payload.points;
+		return stateCopy;
+	}
+
   function reducer(state, action)
   {
     let stateCopy = {...state, exams: [...state.exams]};
@@ -163,6 +179,13 @@ const AdminApp = () =>
 			case 'QUESTION_REMOVED_FROM_EXAM':
 				console.log('QUESTION_REMOVED_FROM_EXAM');
 				return handleQuestionRemovedFromExam(state, action.payload);
+
+			case 'QUESTION_NUMBER_CHANGED':
+				console.log('QUESTION_NUMBER_CHANGED');
+				return handlequestionNumberChanged(state, action.payload);
+			case 'QUESTION_POINTS_CHANGED':
+				console.log('QUESTION_POINTS_CHANGED');
+				return handlequestionPointsChanged(state, action.payload)
 
       case 'DATA_RECEIVED':
       {
@@ -283,7 +306,7 @@ const AdminApp = () =>
 				<EditExam key={examsState.exams[examsState.selectedExamIndex].id} 
 					exam={examsState.exams[examsState.selectedExamIndex]} dispatch={dispatch}/>}
 			{examsState.loggedIn && examsState.selectedExamIndex !== -1 && 
-				<QuestionList questionDataArray={examsState.questionDataArray} dispatch={dispatch}/>}
+				<QuestionList examId={examsState.exams[examsState.selectedExamIndex].id} questionDataArray={examsState.questionDataArray} dispatch={dispatch}/>}
       {examsState.loggedIn && examsState.failedToFetch && <p>Tietojen nouto palvelimelta epäonnistui</p>}
       {examsState.loggedIn && examsState.failedToSave && <p>Tietojen tallennus palvelimelle epäonnistui</p>}
       {examsState.loggedIn && examsState.notAuthorized && <p>Ei valtuuksia</p>}
