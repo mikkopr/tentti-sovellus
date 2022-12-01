@@ -4,8 +4,6 @@ import '../App.css';
 import {updateExam} from '../dataFunctions/examDataFunctions';
 import { useEffect, useState } from 'react';
 
-// TODO Move question components out because state updates rerender those in vain
-
 const EditExam = (props) => 
 {
 	console.log("EditExam");
@@ -55,17 +53,9 @@ const EditExam = (props) =>
 			//the component has id as a key
 			setModifiedState({...modifiedState, modified: false});
 
-			//setModifiedState(modifiedStateFromProps(props));
 			//TODO undefined props when tried to use function version of the state setter
 			//Use function version of useSate to sync the local state with props
 			//setModifiedState((state, props) => {return modifiedStateFromProps(props)});
-			/*setModifiedState((state, props) => (
-				{modified: false, invalidBeginDate: false, invalidBeginTime: false,
-				invalidEndDate: false, invalidEndTime: false, invalidAvailableTime: false,
-				name: props.exam.name, description: props.exam.description,
-				beginDate: dateStringFromIsoString(props.exam.begin), beginTime: timeStringFromIsoString(props.exam.begin),
-				endDate: dateStringFromIsoString(props.exam.end), endTime: timeStringFromIsoString(props.exam.end),
-				available_time: props.exam.available_time}) );*/
 		
 			props.dispatch({type: 'EXAM_DATA_CHANGED', payload: editedExam});
 		}
