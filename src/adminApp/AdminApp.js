@@ -21,8 +21,9 @@ const initialState =
 {
   user: {},
   exams: [],
-	activeExam: undefined,
-  selectedExam: -1,
+	//activeExam: undefined,
+	questionDataArray: undefined, //question data for selected exam, no answers
+  selectedExamIndex: -1,
   failedToSave: false,
   dataFetchRequired: true,
   loggedIn: false,
@@ -105,10 +106,8 @@ const AdminApp = () =>
 		console.log('handleActiveExamChanged(...)');
 		const stateCopy = {...state, exams: [...state.exams]};
 		const examId = payload.examId;
-		let arr = [];
-		const activeExam = {...stateCopy.exams.find( (item) => item.id == examId )};
-		activeExam.questionDataArray = [...payload.questionDataArray];
-		stateCopy.activeExam = activeExam;
+		stateCopy.selectedExamIndex = stateCopy.exams.findIndex( (item) => item.id == examId );
+		stateCopy.questionDataArray = [...payload.questionDataArray];
 		return stateCopy;
 	}
 
@@ -116,33 +115,30 @@ const AdminApp = () =>
 	{
 		console.log('handleExamDataChanged(...)');
 		const stateCopy = {...state, exams: [...state.exams]};
-		const examIndex = stateCopy.exams.findIndex( (item) => item.id == payload.id );
-		//TODO the same state in two places
-		stateCopy.exams[examIndex] = {...stateCopy.exams[examIndex], name: payload.name, description: payload.description,
-			begin: payload.begin, end: payload.end, available_time: payload.available_time};
-		stateCopy.activeExam = {...stateCopy.activeExam, name: payload.name, description: payload.description,
-			begin: payload.begin, end: payload.end, available_time: payload.available_time};
+		//const examIndex = stateCopy.exams.findIndex( (item) => item.id == payload.id );
+		stateCopy.exams[stateCopy.selectedExamIndex] = 
+			{...stateCopy.exams[stateCopy.selectedExamIndex], name: payload.name, description: payload.description,
+				begin: payload.begin, end: payload.end, available_time: payload.available_time};
 		return stateCopy;
 	}
 
 	function handleNewQuestionAddedToExam(state, payload)
 	{
 		console.log('handleNewQuestionAddedToExam(...)');
-		const stateCopy = {...state, exams: [...state.exams]}; //TODO neccessary to copy exams array?
-		stateCopy.activeExam = {...stateCopy.activeExam};
-		stateCopy.activeExam.questionDataArray = [...stateCopy.activeExam.questionDataArray];
-    stateCopy.activeExam.questionDataArray.push(
-			{id: payload.questionData.id, text: payload.questionData.text ,number: payload.questionData.number, points: payload.questionData.points});
+		const stateCopy = {...state, exams: [...state.exams], questionDataArray: [...state.questionDataArray]}; //TODO neccessary to copy exams array?
+		stateCopy.questionDataArray = [...stateCopy.questionDataArray];
+    stateCopy.questionDataArray.push(
+			{id: payload.questionData.id, text: payload.questionData.text ,number: payload.questionData.number,
+				points: payload.questionData.points});
 		return stateCopy;
 	}
 
 	function handleQuestionRemovedFromExam(state, payload)
 	{
-		const stateCopy = {...state};
-		stateCopy.activeExam = {...stateCopy.activeExam};
-		const questionIndex = stateCopy.activeExam.questionDataArray.findIndex( (item => item.id == payload.questionId) );
-		stateCopy.activeExam.questionDataArray = stateCopy.activeExam.questionDataArray.slice(0, questionIndex).concat(
-			stateCopy.activeExam.questionDataArray.slice(questionIndex + 1, stateCopy.activeExam.questionDataArray.length));
+		const stateCopy = {...state, exams: [...state.exams], questionDataArray: [...state.questionDataArray]};
+		const questionIndex = stateCopy.questionDataArray.findIndex( (item => item.id == payload.questionId) );
+		stateCopy.questionDataArray = stateCopy.questionDataArray.slice(0, questionIndex).concat(
+			stateCopy.questionDataArray.slice(questionIndex + 1, stateCopy.questionDataArray.length));
 		return stateCopy;
 	}
 
@@ -177,7 +173,7 @@ const AdminApp = () =>
         stateCopy.failedToFetch = false;
         stateCopy.isSaveRequired = false;
         stateCopy.failedToSave = false;
-        stateCopy.selectedExam = -1;
+        stateCopy.selectedExamIndex = -1;
         stateCopy.user = {...state.user};
         stateCopy.loggedIn = true;
         return stateCopy;
@@ -283,8 +279,11 @@ const AdminApp = () =>
       {examsState.showRegister && <Registration dispatch={dispatch} duplicate={examsState.duplicateEmail}/>}
 			{examsState.showLogin && <Login dispatch={dispatch}/>}
       {examsState.loggedIn && !examsState.dataFetchRequired && <ExamMenu exams={examsState.exams} onExamSelected={handleExamSelected}/>}
-      {examsState.loggedIn && examsState.activeExam && <EditExam key={examsState.activeExam.id} exam={examsState.activeExam} dispatch={dispatch}/>}
-			{examsState.loggedIn && examsState.activeExam && <QuestionList questionDataArray={examsState.activeExam.questionDataArray} dispatch={dispatch}/>}
+      {examsState.loggedIn && examsState.selectedExamIndex !== -1 && 
+				<EditExam key={examsState.exams[examsState.selectedExamIndex].id} 
+					exam={examsState.exams[examsState.selectedExamIndex]} dispatch={dispatch}/>}
+			{examsState.loggedIn && examsState.selectedExamIndex !== -1 && 
+				<QuestionList questionDataArray={examsState.questionDataArray} dispatch={dispatch}/>}
       {examsState.loggedIn && examsState.failedToFetch && <p>Tietojen nouto palvelimelta epäonnistui</p>}
       {examsState.loggedIn && examsState.failedToSave && <p>Tietojen tallennus palvelimelle epäonnistui</p>}
       {examsState.loggedIn && examsState.notAuthorized && <p>Ei valtuuksia</p>}
