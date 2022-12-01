@@ -3,10 +3,12 @@ const express = require('express');
 const { DatabaseError } = require('pg');
 
 const {dbConnPool} = require('../db');
-const {addQuestionToExam, fetchExamQuestions, updateExamQuestion, removeQuestionFromExam} = require('../examQuestionsFunctions');
-const {validateReqParamId, verifyToken, verifyAdminRole} = require('../validateFunctions');
+const {addQuestionToExam, fetchExamQuestions, updateQuestionDataForExam, removeQuestionFromExam} = require('../examQuestionsFunctions');
+const {validateReqParamId, verifyToken, verifyAdminRole, validateNumber} = require('../validateFunctions');
 
 const router = express.Router();
+
+const MAX_VALUE_SMALL_INT = 32768;
 
 /**
  * Handles /tenttikysymykset
@@ -107,9 +109,39 @@ router.get('/tentti/:examId', verifyToken, async (req, res) =>
 });
 
 /**
-* Updates the question attached to the exam. Doesn't create a new question if doesn't exist.
+* Updates the question data attached to the exam. Doesn't create a new question if doesn't exist.
 */
 router.put('/tentti/:examId/kysymys/:questionId', verifyToken, verifyAdminRole, async (req, res) => 
+{
+  const examIdParam = validateReqParamId(req.params.examId);
+  const questionIdParam = validateReqParamId(req.params.questionId);
+  if (examIdParam === undefined || questionIdParam === undefined) {
+    res.status(400).send('Invalid http request parameter');
+    return;
+  }
+  const data = req.body;
+  if (data === undefined || !validateNumber(data.number, 0, MAX_VALUE_SMALL_INT) || 
+			!validateNumber(data.points, 0, MAX_VALUE_SMALL_INT)) {
+    res.status(400).send('Request contains invalid data');
+  }
+  try {
+    const updatedData = await updateQuestionDataForExam(dbConnPool(), examIdParam, questionIdParam, req.body);
+    //Undefined result means that not found, postgres doesn't throw error
+    if (updatedData !== undefined) {
+      res.status(200).send(updatedData);
+    }
+    else {
+			res.status(404).send({sender: 'application', message: 'id or ids not found in database'});
+    }
+  }
+  catch (err) {
+    res.status(500).send('ERROR: Tietojen päivitys epäonnistui' + err.message);
+    console.log('ERROR: ', err.message);
+		return;
+  }
+});
+
+/*router.put('/tentti/:examId/kysymys/:questionId', verifyToken, verifyAdminRole, async (req, res) => 
 {
   const examIdParam = validateReqParamId(req.params.examId);
   const questionIdParam = validateReqParamId(req.params.questionId);
@@ -148,8 +180,8 @@ router.put('/tentti/:examId/kysymys/:questionId', verifyToken, verifyAdminRole, 
     else {
       res.status(500).send('ERROR: ' + err.message);
       console.log('ERROR: ', err.message);
-    }*/
+    }*/ /*
   }
-});
+});*/
 
 module.exports = router;

@@ -56,6 +56,17 @@ const fetchExamIdsContainingQuestion = async (pool, questionId) =>
 }
 
 /**
+ * Updates question number and points
+ */
+const updateQuestionDataForExam = async (pool, examId, questionId, data) =>
+{
+	text = "UPDATE tentti_kysymys_liitos SET kysymys_numero=$3, pisteet=$4 WHERE tentti_id=$1 AND kysymys_id=$2 RETURNING kysymys_numero AS number, pisteet AS points";
+	values = [examId, questionId, data.number, data.points];
+	const result = await pool.query(text, values);
+	return result.rows;
+}
+
+/**
  * Returns the updated question if successful. Returns undefined if an updated table
  * doesn't contain the given id. Otherwise throws an error.
  */
@@ -94,5 +105,6 @@ const updateExamQuestion = async (pool, examId, questionId, data) =>
   }
 }
 
- module.exports = {addQuestionToExam, fetchExamQuestions, fetchExamIdsContainingQuestion, updateExamQuestion, removeQuestionFromExam};
+ module.exports = {addQuestionToExam, fetchExamQuestions, fetchExamIdsContainingQuestion, updateExamQuestion, 
+	updateQuestionDataForExam, removeQuestionFromExam};
  
