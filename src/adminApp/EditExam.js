@@ -1,9 +1,8 @@
 
 import '../App.css';
-import EditQuestion from './EditQuestion';
-import {updateExam, addNewQuestionToExam, removeQuestionFromExam} from '../dataFunctions/examDataFunctions';
+
+import {updateExam} from '../dataFunctions/examDataFunctions';
 import { useEffect, useState } from 'react';
-import { type } from '@testing-library/user-event/dist/type';
 
 // TODO Move question components out because state updates rerender those in vain
 
@@ -17,7 +16,7 @@ const EditExam = (props) =>
 		console.log("EditExam useEffect(...) first run");
 	}, []);
 
-	async function handleAddQuestionClicked(examId)
+	/*async function handleAddQuestionClicked(examId)
 	{
 		let addedQuestionData = undefined;
 		try {
@@ -42,7 +41,7 @@ const EditExam = (props) =>
 			props.dispatch({type: 'FAILED_TO_UPDATE_DATA', payload: err});
 			return;
 		}
-	}
+	}*/
 
 	async function handleUpdateDataClicked()
 	{
@@ -202,27 +201,6 @@ const EditExam = (props) =>
 				{modifiedState.modified && inputsValid() && <button type='button' onClick={() => handleUpdateDataClicked()}>Save</button>}
 				{modifiedState.modified && !inputsValid() && <button type='button' disabled onClick={() => handleUpdateDataClicked()}>Save</button>}
 			</div>
-			<div className='kysymys-lista'>
-				{props.exam.questionDataArray.map( (item) => {
-					return (
-						<div key={item.id}>
-							<EditQuestion
-								questionId={item.id}
-								dispatch={props.dispatch}
-							/>
-							<input type='button' value='-'
-								onClick={(event) => handleRemoveQuestionClicked(item.id)}
-							/>
-						</div>
-						)
-					})
-				}
-			</div>
-			<div>
-				<input type='button' value='+'
-					onClick={event => handleAddQuestionClicked(props.exam.id)}
-				/>
-			</div>
 		</div>
 	);
 };
@@ -316,3 +294,27 @@ function paddedTimeComponent(timeComponent)
 }
 
 export default EditExam;
+
+/*
+<div className='kysymys-lista'>
+				{props.exam.questionDataArray.map( (item) => {
+					return (
+						<div key={item.id}>
+							<EditQuestion
+								questionId={item.id}
+								dispatch={props.dispatch}
+							/>
+							<input type='button' value='-'
+								onClick={(event) => handleRemoveQuestionClicked(item.id)}
+							/>
+						</div>
+						)
+					})
+				}
+			</div>
+			<div>
+				<input type='button' value='+'
+					onClick={event => handleAddQuestionClicked(props.exam.id)}
+				/>
+			</div>
+			*/

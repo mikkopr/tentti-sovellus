@@ -15,6 +15,7 @@ import ServerError from '../errors/ServerError';
 import InvalidDataError from '../errors/InvalidDataError';
 import Registration from '../Registration';
 import ErrorMessage from '../ErrorMessage'
+import QuestionList from './QuestionList';
 
 const initialState = 
 {
@@ -282,7 +283,8 @@ const AdminApp = () =>
       {examsState.showRegister && <Registration dispatch={dispatch} duplicate={examsState.duplicateEmail}/>}
 			{examsState.showLogin && <Login dispatch={dispatch}/>}
       {examsState.loggedIn && !examsState.dataFetchRequired && <ExamMenu exams={examsState.exams} onExamSelected={handleExamSelected}/>}
-      {examsState.loggedIn && examsState.activeExam !== undefined && <EditExam key={examsState.activeExam.id} exam={examsState.activeExam} dispatch={dispatch}/>}
+      {examsState.loggedIn && examsState.activeExam && <EditExam key={examsState.activeExam.id} exam={examsState.activeExam} dispatch={dispatch}/>}
+			{examsState.loggedIn && examsState.activeExam && <QuestionList questionDataArray={examsState.activeExam.questionDataArray} dispatch={dispatch}/>}
       {examsState.loggedIn && examsState.failedToFetch && <p>Tietojen nouto palvelimelta epäonnistui</p>}
       {examsState.loggedIn && examsState.failedToSave && <p>Tietojen tallennus palvelimelle epäonnistui</p>}
       {examsState.loggedIn && examsState.notAuthorized && <p>Ei valtuuksia</p>}
