@@ -1,8 +1,8 @@
 
 const addExam = async (pool, data) => 
 {
-  const text = "INSERT INTO tentti(nimi, kuvaus, pvm) VALUES($1, $2, $3) RETURNING *";
-  const values = [data.nimi, data.kuvaus, new Date(data.pvm)];
+  const text = "INSERT INTO tentti(nimi, kuvaus, tekoaika_mins) VALUES($1, $2, $3) RETURNING id, nimi AS name, kuvaus AS description, alkuaika AS begin, loppuaika AS end, tekoaika_mins AS available_time";
+  const values = [data.name, data.description, data.available_time];
   try {
     const result = await pool.query(text, values);
     return result.rows[0];
@@ -11,6 +11,11 @@ const addExam = async (pool, data) =>
     throw new Error('ERROR: query error: ' + err);
   }
 };
+
+const deleteExam = async (pool, examId) =>
+{
+	await pool.query("DELETE FROM tentti WHERE id=$1", [examId]);
+}
 
 const fetchExam = async (pool, id) =>
 {
@@ -29,7 +34,7 @@ const fetchExam = async (pool, id) =>
 //NOTE column names in result are uncapitalized even when defined othewise in AS
 const fetchExams = async (pool) =>
 {
-  const text = "SELECT id, nimi AS name, kuvaus AS description, alkuaika AS begin, loppuaika AS end, tekoaika_mins AS available_time FROM tentti";
+  const text = "SELECT id, nimi AS name, kuvaus AS description, alkuaika AS begin, loppuaika AS end, tekoaika_mins AS available_time FROM tentti ORDER BY nimi ASC";
   try {
     const result = await pool.query(text);
     return result.rows;
@@ -56,4 +61,4 @@ const updateExam = async (pool, examId, data) =>
   return result.rows[0];
 }
 
-module.exports = {addExam, fetchExam, fetchExams, updateExam};
+module.exports = {addExam, deleteExam, updateExam, fetchExam, fetchExams};

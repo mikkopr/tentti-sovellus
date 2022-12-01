@@ -16,6 +16,8 @@ import InvalidDataError from '../errors/InvalidDataError';
 import Registration from '../Registration';
 import ErrorMessage from '../ErrorMessage'
 import QuestionList from './QuestionList';
+import ExamList from './ExamList';
+import Toolbar from './Toolbar';
 
 const initialState = 
 {
@@ -33,6 +35,8 @@ const initialState =
 	showRegister: false,
 	showExamList: false,
 	showError: false,
+	showExamList: false,
+	showExam: false,
 	errorMessage: ''
 };
 
@@ -83,9 +87,6 @@ const AdminApp = () =>
 
 	async function handleExamSelected(id)
 	{
-		if (examsState.activeExam?.id === id) {
-			return;
-		}
 		try {
 				//const questions = await fetchQuestionsAndAnswersForExam(id);
 				const questionDataArray = await fetchQuestionsForExam(id);
@@ -104,10 +105,26 @@ const AdminApp = () =>
 	function handleActiveExamChanged(state, payload)
 	{
 		console.log('handleActiveExamChanged(...)');
-		const stateCopy = {...state, exams: [...state.exams]};
+		const stateCopy = {...state, exams: [...state.exams], showExamList: false, showExam: true};
 		const examId = payload.examId;
 		stateCopy.selectedExamIndex = stateCopy.exams.findIndex( (item) => item.id == examId );
 		stateCopy.questionDataArray = [...payload.questionDataArray];
+		return stateCopy;
+	}
+
+	function handleExamAdded(state, payload)
+	{
+		const stateCopy = {...state, exams: [...state.exams]};
+		stateCopy.exams.push(payload);
+		return stateCopy;
+	}
+
+	function handleExamRemoved(state, payload)
+	{
+		const stateCopy = {...state};
+		const removedIndex = stateCopy.exams.findIndex((item) => item.id === payload.examId);
+		stateCopy.exams = stateCopy.exams.slice(0, removedIndex).concat(
+			stateCopy.exams.slice(removedIndex + 1, stateCopy.exams.length));
 		return stateCopy;
 	}
 
@@ -115,9 +132,15 @@ const AdminApp = () =>
 	{
 		console.log('handleExamDataChanged(...)');
 		const stateCopy = {...state, exams: [...state.exams]};
-		//const examIndex = stateCopy.exams.findIndex( (item) => item.id == payload.id );
-		stateCopy.exams[stateCopy.selectedExamIndex] = 
-			{...stateCopy.exams[stateCopy.selectedExamIndex], name: payload.name, description: payload.description,
+		let examIndex 
+		//If an exam is modified in the list, nothing is selected
+		if (stateCopy.selectedExamIndex > -1)
+			examIndex = stateCopy.selectedExamIndex;
+		else
+			examIndex = stateCopy.exams.findIndex( (item) => item.id == payload.id );
+		
+		stateCopy.exams[examIndex] = 
+			{...stateCopy.exams[examIndex], name: payload.name, description: payload.description,
 				begin: payload.begin, end: payload.end, available_time: payload.available_time};
 		return stateCopy;
 	}
@@ -168,6 +191,14 @@ const AdminApp = () =>
 				console.log('ACTIVE_EXAM_CHANGED');
 				return handleActiveExamChanged(state, action.payload);
 
+			case 'EXAM_ADDED':
+				console.log('EXAM_ADDED');
+				return handleExamAdded(state, action.payload);
+			
+			case 'EXAM_REMOVED':
+				console.log('EXAM_REMOVED');
+				return handleExamRemoved(state, action.payload);
+
 			case 'EXAM_DATA_CHANGED':
 				console.log('EXAM_DATA_CHANGED');
 				return handleExamDataChanged(state, action.payload);
@@ -199,6 +230,7 @@ const AdminApp = () =>
         stateCopy.selectedExamIndex = -1;
         stateCopy.user = {...state.user};
         stateCopy.loggedIn = true;
+				stateCopy.showExamList = true;
         return stateCopy;
       }
       case 'FAILED_TO_FETCH_DATA':
@@ -261,6 +293,10 @@ const AdminApp = () =>
 				console.log('SHOW_REGISTRATION_REQUESTED');
 				return {...state, user: {}, loggedIn: false, showLogin: false, showRegister: true, showError: false};
 
+			case 'SHOW_EXAM_LIST_REQUESTED':
+				console.log('SHOW_EXAM_LIST_REQUESTED');
+				return {...state, selectedExamIndex: -1,  showExamList: true, showExam: false};
+				
 			case 'REGISTRATION_COMPLETED':
 				console.log('REGISTRATION_COMPLETED');
 				const userId = action.payload.data.userId;
@@ -294,20 +330,22 @@ const AdminApp = () =>
 
   return (
     <div className='App'>
-      <Navbar dispatch={dispatch}/>
-			{examsState.loggedIn && <input type='button' value='Kirjaudu ulos' onClick={(event) =>
-        dispatch({type: 'LOG_OUT_REQUESTED'})}/>
-      }
+      <Navbar loggedIn={examsState.loggedIn} dispatch={dispatch}/>
 			{examsState.showError && <ErrorMessage message={examsState.errorMessage} dispatch={dispatch}/>}
-      {examsState.showRegister && <Registration dispatch={dispatch} duplicate={examsState.duplicateEmail}/>}
+      
+			{examsState.showRegister && <Registration dispatch={dispatch} duplicate={examsState.duplicateEmail}/>}
 			{examsState.showLogin && <Login dispatch={dispatch}/>}
-      {examsState.loggedIn && !examsState.dataFetchRequired && <ExamMenu exams={examsState.exams} onExamSelected={handleExamSelected}/>}
-      {examsState.loggedIn && examsState.selectedExamIndex !== -1 && 
+
+			{examsState.loggedIn && <Toolbar dispatch={dispatch}/>}
+      {examsState.loggedIn && examsState.showExamList && <ExamList exams={examsState.exams} dispatch={dispatch}/>}
+      {examsState.loggedIn && examsState.selectedExamIndex !== -1 && examsState.showExam && 
 				<EditExam key={examsState.exams[examsState.selectedExamIndex].id} 
 					exam={examsState.exams[examsState.selectedExamIndex]} dispatch={dispatch}/>}
-			{examsState.loggedIn && examsState.selectedExamIndex !== -1 && 
+			{examsState.loggedIn && examsState.selectedExamIndex !== -1 && examsState.showExam && 
 				<QuestionList examId={examsState.exams[examsState.selectedExamIndex].id} questionDataArray={examsState.questionDataArray} dispatch={dispatch}/>}
-      {examsState.loggedIn && examsState.failedToFetch && <p>Tietojen nouto palvelimelta epäonnistui</p>}
+      
+			
+			{examsState.loggedIn && examsState.failedToFetch && <p>Tietojen nouto palvelimelta epäonnistui</p>}
       {examsState.loggedIn && examsState.failedToSave && <p>Tietojen tallennus palvelimelle epäonnistui</p>}
       {examsState.loggedIn && examsState.notAuthorized && <p>Ei valtuuksia</p>}
     </div>
@@ -315,3 +353,5 @@ const AdminApp = () =>
 }
 
 export default AdminApp;
+
+//{examsState.loggedIn && !examsState.dataFetchRequired && <ExamMenu exams={examsState.exams} onExamSelected={handleExamSelected}/>}

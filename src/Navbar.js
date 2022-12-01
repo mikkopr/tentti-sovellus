@@ -5,12 +5,9 @@ const Navbar = (props) =>
 {
 	return (
 		<div className="navbar">
-			<input type='button' value='Login' 
-				onClick={(event) => props.dispatch({type:'SHOW_LOGIN_REQUESTED'})}
-			/>
-			<input type='button' value='Register' 
-				onClick={(event) => props.dispatch({type:'SHOW_REGISTRATION_REQUESTED'})}
-			/>
+			{!props.loggedIn && <button type='button'	onClick={(event) => props.dispatch({type:'SHOW_LOGIN_REQUESTED'})}>Kirjaudu</button>}
+			{!props.loggedIn && <button type='button'	onClick={(event) => props.dispatch({type:'SHOW_REGISTRATION_REQUESTED'})}>Rekisteröidy</button>}
+			{props.loggedIn && <button type='button'	onClick={(event) => props.dispatch({type:'LOG_OUT_REQUESTED'})}>Kirjaudu ulos</button>}
 		</div>
 	);
 }

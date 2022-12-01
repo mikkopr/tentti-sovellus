@@ -10,6 +10,30 @@ import ConnectionError from '../errors/ConnectionError'
 import {fetchAnswers} from './answerDataFunctions';
 
 
+
+const addExam = async () =>
+{
+	let fetchResult = undefined;
+	try {
+		const examStub = {name: 'Tentti', description: '', available_time: 0};
+		fetchResult = await axios.post('http://localhost:8080/tentit/', examStub, axiosConfig.getConfig());
+	}
+	catch (err) {
+		throw err;
+	}
+	return fetchResult.data;
+}
+
+const removeExam = async (examId) =>
+{
+	try {
+		await axios.delete(`http://localhost:8080/tentit/${examId}`, axiosConfig.getConfig());
+	}
+	catch (err) {
+		throw err;
+	}
+}
+
 const fetchQuestionAndAnswers = async (questionId) =>
 {
 	let fetchResult = undefined;
@@ -144,5 +168,5 @@ const updateQuestionDataForExam = async (examId, questionId, number, points) =>
 	}
 }
 
-export {fetchQuestionAndAnswers, fetchQuestionsForExam, fetchQuestionsAndAnswersForExam, updateExam, 
+export {addExam, removeExam, fetchQuestionAndAnswers, fetchQuestionsForExam, fetchQuestionsAndAnswersForExam, updateExam, 
 	addNewQuestionToExam, updateQuestion, updateQuestionDataForExam, removeQuestionFromExam};

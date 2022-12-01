@@ -86,6 +86,11 @@ label {
 	background-color: aqua;
 }
 
+.toolbar {
+	height: 30px;
+	background-color: skyblue;
+}
+
 .error {
 	display: flex;
 	flex-direction: row;

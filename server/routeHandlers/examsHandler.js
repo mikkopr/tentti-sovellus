@@ -1,8 +1,9 @@
 
+const { default: axios } = require('axios');
 const express = require('express');
 
 const {dbConnPool} = require('../db');
-const {fetchExams, fetchExam, addExam, updateExam} = require('../examFunctions');
+const {fetchExams, fetchExam, addExam, deleteExam, updateExam} = require('../examFunctions');
 const {verifyToken, verifyAdminRole, validateReqParamId, validateNumber, validateDate} = require('../validateFunctions');
 
 const router = express.Router();
@@ -62,8 +63,8 @@ router.post('/', verifyToken, verifyAdminRole, async (req, res) =>
 {  
   const data = req.body;
 	if (data === undefined || data.name === undefined || data.description === undefined || 
-		!validateNumber(data.available_time, 0, MAX_VALUE_SMALL_INT) ||
-		!validateDate(data.begin) || !validateDate(data.end))
+		data.begin && !validateDate(data.begin) || data.end && !validateDate(data.end) ||
+		!validateNumber(data.available_time, 0, MAX_VALUE_SMALL_INT))
 	{
     res.status(400).send('Invalid http requets parameter');
     return;
@@ -89,7 +90,7 @@ router.put('/:examId', verifyToken, verifyAdminRole, async (req, res) =>
   const data = req.body;
   if (data === undefined || data.name === undefined || data.description === undefined || 
 			!validateNumber(data.available_time, 0, MAX_VALUE_SMALL_INT) ||
-			!validateDate(data.begin) || !validateDate(data.end))
+			data.begin && !validateDate(data.begin) || data.end && !validateDate(data.end))
 	{
     res.status(400).send('Invalid http requets parameter');
     return;
@@ -109,6 +110,24 @@ router.put('/:examId', verifyToken, verifyAdminRole, async (req, res) =>
       console.log('ERROR: ', err);
       return;
   }
-})
+});
+
+router.delete('/:examId', verifyToken, verifyAdminRole, async (req, res) =>
+{
+  const examIdParam = validateReqParamId(req.params.examId);
+  if (examIdParam === undefined) {
+    res.status(400).send('Invalid http request parameter');
+    return;
+  }
+	try {
+		await deleteExam(dbConnPool(), examIdParam);
+		res.status(204).end();
+	}
+	catch (err) {
+		res.status(500).send('ERROR: ' + err.message);
+    console.log('ERROR: ', err.message);
+		return;
+	}
+});
 
 module.exports = router;
