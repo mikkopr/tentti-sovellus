@@ -255,7 +255,7 @@ const AdminApp = () =>
 				const token = action.payload.data.token;
         if (responseStatus == 200) {
 					axiosConfig.setToken(token);
-          return {...state, user: {userId: userId, email: email, role: role, token: token}, loggedIn: true, 
+          return {...state, user: {userId: userId, email: email, role: role, admin: (role === 'admin'), token: token}, loggedIn: true, 
 						loginRequested: false, dataFetchRequired: true, showError: false};
         }
 				/*else if (responseStatus == 403 || responseStatus == 401) //TODO status?
@@ -328,8 +328,8 @@ const AdminApp = () =>
 
   return (
     <div className='App'>
-      <Navbar loggedIn={examsState.loggedIn} dispatch={dispatch}/>
-			{examsState.loggedIn && <Toolbar dispatch={dispatch}/>}
+      <Navbar loggedIn={examsState.loggedIn} admin={examsState.user?.admin} dispatch={dispatch}/>
+			{examsState.loggedIn && <Toolbar showExamTools={examsState.showExam} showExamListTools={examsState.showExamList} admin={examsState.user?.admin} dispatch={dispatch}/>}
 
 			{examsState.showError && <ErrorMessage message={examsState.errorMessage} dispatch={dispatch}/>}
 
@@ -339,10 +339,12 @@ const AdminApp = () =>
 
       {examsState.loggedIn && examsState.showExamList && <ExamList exams={examsState.exams} dispatch={dispatch}/>}
       {examsState.loggedIn && examsState.selectedExamIndex !== -1 && examsState.showExam && 
-				<EditExam key={examsState.exams[examsState.selectedExamIndex].id} 
-					exam={examsState.exams[examsState.selectedExamIndex]} dispatch={dispatch}/>}
-			{examsState.loggedIn && examsState.selectedExamIndex !== -1 && examsState.showExam && 
-				<QuestionList examId={examsState.exams[examsState.selectedExamIndex].id} questionDataArray={examsState.questionDataArray} dispatch={dispatch}/>}
+				(<>
+					<EditExam key={examsState.exams[examsState.selectedExamIndex].id} 
+						exam={examsState.exams[examsState.selectedExamIndex]} dispatch={dispatch}/>
+					<QuestionList examId={examsState.exams[examsState.selectedExamIndex].id} 
+						questionDataArray={examsState.questionDataArray} dispatch={dispatch}/>
+				</>)}
       
     </div>
     )
@@ -421,3 +423,6 @@ export default AdminApp;
 //{examsState.loggedIn && examsState.failedToFetch && <p>Tietojen nouto palvelimelta epäonnistui</p>}
 //{examsState.loggedIn && examsState.failedToSave && <p>Tietojen tallennus palvelimelle epäonnistui</p>}
 //{examsState.loggedIn && examsState.notAuthorized && <p>Ei valtuuksia</p>}
+
+//{examsState.loggedIn && examsState.selectedExamIndex !== -1 && examsState.showExam && 
+//<QuestionList examId={examsState.exams[examsState.selectedExamIndex].id} questionDataArray={examsState.questionDataArray} dispatch={dispatch}/>}

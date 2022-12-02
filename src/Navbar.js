@@ -1,13 +1,16 @@
 
 import './App.css';
 
-const Navbar = (props) =>
+const Navbar = ({loggedIn, admin, dispatch}) =>
 {
+
 	return (
 		<div className="navbar">
-			{!props.loggedIn && <button type='button'	onClick={(event) => props.dispatch({type:'SHOW_LOGIN_REQUESTED'})}>Kirjaudu</button>}
-			{!props.loggedIn && <button type='button'	onClick={(event) => props.dispatch({type:'SHOW_REGISTRATION_REQUESTED'})}>Rekisteröidy</button>}
-			{props.loggedIn && <button type='button'	onClick={(event) => props.dispatch({type:'LOG_OUT_REQUESTED'})}>Kirjaudu ulos</button>}
+			{!loggedIn && <button type='button'	onClick={(event) => dispatch({type:'SHOW_LOGIN_REQUESTED'})}>Kirjaudu</button>}
+			{!loggedIn && <button type='button'	onClick={(event) => dispatch({type:'SHOW_REGISTRATION_REQUESTED'})}>Rekisteröidy</button>}
+			{loggedIn && <button type="button" onClick={(event) => dispatch({type: 'SHOW_EXAM_LIST_REQUESTED'})}>Tentit</button>}
+			{loggedIn && admin &&	<button type="button" onClick={(event) => dispatch({type: 'SHOW_USER_LIST_REQUESTED'})}>Käyttäjät</button>}
+			{loggedIn && <button type='button' onClick={(event) => dispatch({type:'LOG_OUT_REQUESTED'})}>Kirjaudu ulos</button>}
 		</div>
 	);
 }

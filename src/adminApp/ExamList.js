@@ -40,6 +40,14 @@ const ExamList = (props) =>
 		}
 	}
 
+	/**
+	 * Creates a new exam, that has the same questions as the given exam
+	 */
+	async function handleCloneExamClicked(examId)
+	{
+		//TODO
+	}
+
 	return (
 		<div>
 			<button type='button' onClick={(event) => handleAddExamClicked()}>Uusi tentti</button>
@@ -49,6 +57,7 @@ const ExamList = (props) =>
 						<div key={item.id}>
 							<EditExam exam={item} dispatch={props.dispatch}/>
 							<button type='button' onClick={(event) => handleOpenExamClicked(item.id)}>Avaa</button>
+							<button type='button' onClick={(event) => handleCloneExamClicked(item.id)}>Kloonaa</button>
 							<button type='button' onClick={(event) => handleRemoveExamClicked(item.id)}>Poista</button>
 						</div>
 					)
