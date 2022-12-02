@@ -8,11 +8,7 @@ import '../App.css';
 
 import Navbar from '../Navbar'
 import EditExam from './EditExam';
-import ExamMenu from '../ExamMenu';
 import Login from '../Login';
-import { fetchQuestionsForExam } from '../dataFunctions/examDataFunctions';
-import ServerError from '../errors/ServerError';
-import InvalidDataError from '../errors/InvalidDataError';
 import Registration from '../Registration';
 import ErrorMessage from '../ErrorMessage'
 import QuestionList from './QuestionList';
@@ -44,6 +40,8 @@ const initialState =
 //const SERVER = 'http://localhost:8081';
 const SERVER = 'http://localhost:8080';
 
+const ERROR_NAME_AXIOS_ERROR = 'AxiosError';
+
 const AdminApp = () => 
 {
   const [examsState, dispatch] = useReducer(reducer, initialState);
@@ -72,7 +70,8 @@ const AdminApp = () =>
     const postData = async () =>
     {
       try {
-        const result = await axios.post(SERVER + '/login', {email: examsState.user.name, password: examsState.user.password});
+        const result = await axios.post(SERVER + '/login', {email: examsState.user.name, password: examsState.user.password},
+					axiosConfig.getConfig());
         dispatch({type: 'CREDENTIALS_VERIFICATION_RESPONSE_RECEIVED', 
           payload: {status: result.status, data: result.data}});
       }
@@ -84,23 +83,6 @@ const AdminApp = () =>
       postData();
     }
   }, [examsState.loginRequested, examsState.loggedIn]);
-
-	async function handleExamSelected(id)
-	{
-		try {
-				//const questions = await fetchQuestionsAndAnswersForExam(id);
-				const questionDataArray = await fetchQuestionsForExam(id);
-				dispatch({type: 'ACTIVE_EXAM_CHANGED', 
-					payload: {examId: id, questionDataArray: questionDataArray} });
-		}
-		catch (err) {
-			if (err instanceof ServerError || err instanceof InvalidDataError) {
-				//dispatch({type: 'SERVER_ERROR', payload: err});
-				dispatch({type: 'FAILED_TO_FETCH_DATA', payload: err});
-			}
-			dispatch({type: 'FAILED_TO_FETCH_DATA', payload: err});
-		}
-	}
 
 	function handleActiveExamChanged(state, payload)
 	{
@@ -181,6 +163,20 @@ const AdminApp = () =>
 		return stateCopy;
 	}
 
+	function handleFailedToFetchData(state, payload)
+	{
+		const errorMessageToUser = errorMessageForError(payload);
+		alert(errorMessageToUser); //TODO remove
+		return {...state, failedToFetch: true, showError: true, errorMessage: errorMessageToUser};
+	}
+
+	function handleFailedToUpdateData(state, payload)
+	{
+		const errorMessageToUser = errorMessageForError(payload);
+		alert(errorMessageToUser); //TODO remove
+		return {...state, failedToSave: true, showError: true, errorMessage: errorMessageToUser};
+	}
+
   function reducer(state, action)
   {
     let stateCopy = {...state, exams: [...state.exams]};
@@ -214,14 +210,14 @@ const AdminApp = () =>
 			case 'QUESTION_NUMBER_CHANGED':
 				console.log('QUESTION_NUMBER_CHANGED');
 				return handlequestionNumberChanged(state, action.payload);
-			case 'QUESTION_POINTS_CHANGED':
+			
+				case 'QUESTION_POINTS_CHANGED':
 				console.log('QUESTION_POINTS_CHANGED');
 				return handlequestionPointsChanged(state, action.payload)
 
       case 'DATA_RECEIVED':
       {
         console.log('DATA_RECEIVED');
-        //stateCopy.exams = JSON.parse(JSON.stringify(action.payload));
         stateCopy.exams = action.payload;
         stateCopy.dataFetchRequired = false;
         stateCopy.failedToFetch = false;
@@ -233,21 +229,21 @@ const AdminApp = () =>
 				stateCopy.showExamList = true;
         return stateCopy;
       }
+
       case 'FAILED_TO_FETCH_DATA':
-        console.log('FAILED_TO_FETCH_DATA');
-				console.log(action.payload?.message);
-        return {...state, failedToFetch: true};
-      
+        console.log('FAILED_TO_FETCH_DATA: ' + action.payload.message);
+				return handleFailedToFetchData(state, action.payload);
+			
 			case 'FAILED_TO_UPDATE_DATA':
-				console.log('FAILED_TO_UPDATE_DATA ', action.payload?.err?.message);
-				return {...state};
-      
+				console.log('FAILED_TO_UPDATE_DATA ', action.payload.message);
+				return handleFailedToUpdateData(state, action.payload);
+
 			case 'USER_CREDENTIALS_RECEIVED':
       {
         console.log('USER_CREDENTIALS_RECEIVED');
         const user = {name: action.payload.username, password: action.payload.password};
         return {...state, user: user, loggedIn: false, loginRequested: true, 
-          authenticationFailed: false, notAuthorized: false, isSaveRequired: false, failedToSave: false, showLogin: false};
+        	isSaveRequired: false, failedToSave: false, showLogin: false};
       }
       case 'CREDENTIALS_VERIFICATION_RESPONSE_RECEIVED':
       {
@@ -260,7 +256,7 @@ const AdminApp = () =>
         if (responseStatus == 200) {
 					axiosConfig.setToken(token);
           return {...state, user: {userId: userId, email: email, role: role, token: token}, loggedIn: true, 
-						loginRequested: false, dataFetchRequired: true};
+						loginRequested: false, dataFetchRequired: true, showError: false};
         }
 				/*else if (responseStatus == 403 || responseStatus == 401) //TODO status?
 					return {...state, user: {...state.user}, loggedIn: false, loginRequested: false, failedToAuthenticate: true,
@@ -271,19 +267,19 @@ const AdminApp = () =>
       }
       case 'FAILED_TO_VERIFY_CREDENTIALS':
         console.log('FAILED_TO_VERIFY_CREDENTIALS');
-				if (action.payload.response?.status == 401 || action.payload.response?.status == 403) //TODO status
+				if (action.payload.response?.status == 401)
 					return {...state, user: {...state.user}, loggedIn: false, failedToAuthenticate: true, 
-						showLogin: true, showError: true, errorMessage: 'Käyttäjätunnus tai salasana väärä'};
+						showLogin: true, loginRequested: false, showError: true, errorMessage: 'Käyttäjätunnus tai salasana väärä'};
 				else {
-					const message = action.payload.response?.error?.message ? 
-						action.payload.response.error.message : 'Kirjautuminen epäonnistui'
+					console.log('Login failed: ' + action.payload.response?.error?.message);
+					const message = 'Kirjautuminen epäonnistui, sovelluksessa virhetilanne';
 	        return {...state, user: {...state.user}, loggedIn: false, failedToAuthenticate: true,
-						showLogin: true, showError: true, errorMessage: message};
+						showLogin: true, loginRequested: false, showError: true, errorMessage: message};
 				}
       
 			case 'LOG_OUT_REQUESTED':
         console.log('LOG_OUT_REQUESTED');
-        return {...state, user: {}, loggedIn: false, notAuthorized: false};
+        return {...state, user: {}, loggedIn: false, notAuthorized: false, showError: false};
       
 			case 'SHOW_LOGIN_REQUESTED':
 				console.log('SHOW_LOGIN_REQUESTED');
@@ -305,7 +301,8 @@ const AdminApp = () =>
 				const token = action.payload.data.token;
 				axiosConfig.setToken(token);
 				return {...state, user: {userId: userId, email: email, role: role, token: token}, loggedIn: true, 
-						loginRequested: false, dataFetchRequired: true, showLogin: false, showRegister: false, duplicateEmail: false};
+						loginRequested: false, dataFetchRequired: true, showLogin: false, showRegister: false,
+						showError: false, duplicateEmail: false};
 			
 			case 'REGISTRATION_FAILED':
 			{
@@ -323,6 +320,7 @@ const AdminApp = () =>
 			}
 			case 'HIDE_ERROR_REQUESTED':
 				return {...state, showError: false};
+			
 			default:
         throw Error('Unknown event: ' + action.type);
     }
@@ -331,12 +329,14 @@ const AdminApp = () =>
   return (
     <div className='App'>
       <Navbar loggedIn={examsState.loggedIn} dispatch={dispatch}/>
+			{examsState.loggedIn && <Toolbar dispatch={dispatch}/>}
+
 			{examsState.showError && <ErrorMessage message={examsState.errorMessage} dispatch={dispatch}/>}
-      
+
+			{!examsState.loggedIn && examsState.loginRequested && <p>Kirjaudutaan...</p>}
 			{examsState.showRegister && <Registration dispatch={dispatch} duplicate={examsState.duplicateEmail}/>}
 			{examsState.showLogin && <Login dispatch={dispatch}/>}
 
-			{examsState.loggedIn && <Toolbar dispatch={dispatch}/>}
       {examsState.loggedIn && examsState.showExamList && <ExamList exams={examsState.exams} dispatch={dispatch}/>}
       {examsState.loggedIn && examsState.selectedExamIndex !== -1 && examsState.showExam && 
 				<EditExam key={examsState.exams[examsState.selectedExamIndex].id} 
@@ -344,14 +344,80 @@ const AdminApp = () =>
 			{examsState.loggedIn && examsState.selectedExamIndex !== -1 && examsState.showExam && 
 				<QuestionList examId={examsState.exams[examsState.selectedExamIndex].id} questionDataArray={examsState.questionDataArray} dispatch={dispatch}/>}
       
-			
-			{examsState.loggedIn && examsState.failedToFetch && <p>Tietojen nouto palvelimelta epäonnistui</p>}
-      {examsState.loggedIn && examsState.failedToSave && <p>Tietojen tallennus palvelimelle epäonnistui</p>}
-      {examsState.loggedIn && examsState.notAuthorized && <p>Ei valtuuksia</p>}
     </div>
     )
+}
+
+function errorMessageForError(error)
+{
+	let statusCode;
+	let responseData;
+	let errorMessageToUser = 'Tietojen tallennus epäonnistui. ';
+	if (error.name === ERROR_NAME_AXIOS_ERROR) {
+		if (error.code === 'ECONNABORTED') {
+			errorMessageToUser += 'Palvelimelta ei saatu vastausta. ';
+		}
+		else {
+			statusCode = error.response?.status;
+			responseData = error.response?.data;
+		}
+	}
+	//Also client may throw an error, E.g when received status 200 but failure
+	else {
+		statusCode = null;
+		errorMessageToUser += error.message;
+	}
+	if (statusCode)
+		errorMessageToUser += errorMessageForResponseStatus(statusCode, responseData);
+	
+	return errorMessageToUser;
+}
+
+function errorMessageForResponseStatus(statusCode, responseData)
+{
+	let errorMessage = '';
+	switch (statusCode)
+	{
+		case 401:
+			errorMessage = 'Et ole kirjautunut sisään. Toimenpide vaatii sisäänkirjautumisen.';
+			break;
+		case 403:
+			errorMessage = 'Sinulla ei ole vaadittavaa käyttöoikeutta.';
+			break;
+		case 400:
+			errorMessage = 'Palvelimelle lähetetty virheellistä tietoa.';
+			break;
+		case 404:
+			errorMessage = errorMessageForResponseNotFound(responseData);
+			break;
+		case 409:
+			errorMessage = 'On jo olemassa'; //TODO Modify server to send 200 and failure instead (or 500 because not user faiure)
+			break;
+		case 500:
+			errorMessage = 'Palvelimella virhetila.';
+			break;
+		default:
+			errorMessage = 'Sovelluksessa virhetila.';
+	}
+	return errorMessage;
+}
+
+/**
+ * Return error message for response status 404
+ */
+function errorMessageForResponseNotFound(responseData)
+{
+	//TODO Modify server to send not found (and 409) in the database using status 200 (examAssignmentsHandler.js)
+	//Then the following isn't needed
+	if (responseData.sender === 'Application')
+		return 'Toimenpiteeseen vaadittavaa tietoa ei löydy palvelimelta. ' + responseData.message;
+	else
+		return 'Pyyntö ei mennyt perille oikeaan paikkaan.';
 }
 
 export default AdminApp;
 
 //{examsState.loggedIn && !examsState.dataFetchRequired && <ExamMenu exams={examsState.exams} onExamSelected={handleExamSelected}/>}
+//{examsState.loggedIn && examsState.failedToFetch && <p>Tietojen nouto palvelimelta epäonnistui</p>}
+//{examsState.loggedIn && examsState.failedToSave && <p>Tietojen tallennus palvelimelle epäonnistui</p>}
+//{examsState.loggedIn && examsState.notAuthorized && <p>Ei valtuuksia</p>}

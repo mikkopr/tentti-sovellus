@@ -30,7 +30,7 @@ const userInRole = async (decodedToken, role) =>
 const verifyAdminRole = async (req, res, next) =>
 {
 	if (!req.decodedToken) {
-		res.status(403).send('ERROR: Token was not provided.');
+		res.status(401).send('ERROR: Token was not provided.');
 		return;
 	}
 	if (req.decodedToken.role != roles.roles().admin) {
@@ -63,7 +63,7 @@ const verifyToken = (req, res, next) =>
 	const token = req.headers.authorization?.split(' ')[1]; 
 	//Use header Authorization: 'Bearer TOKEN'
 	if (!token) {
-		res.status(403).send('ERROR: Token was not provided.');
+		res.status(401).send('ERROR: Token was not provided.');
 		return;
 	}
 	let decodedToken = undefined;
