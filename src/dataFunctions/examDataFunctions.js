@@ -10,6 +10,46 @@ import ConnectionError from '../errors/ConnectionError'
 import {fetchAnswers} from './answerDataFunctions';
 
 
+const fetchExams = async () =>
+{
+	try {
+		const fetchResult = await axios.get(`http://localhost:8080/tentit`, axiosConfig.getConfig());
+		return fetchResult;
+	}
+	catch (err) {
+		throw err;
+	}
+}
+
+/**
+ * If includeQuestions==true includes also the questions and answers
+ */
+const fetchExam = async (examId, includeQuestions) =>
+{
+	try {
+		let fetchResult;
+		if (includeQuestions)
+			fetchResult = await axios.get(`http://localhost:8080/tentit/${examId}?kysymykset=true`, axiosConfig.getConfig());
+		else
+		fetchResult = await axios.get(`http://localhost:8080/tentit/${examId}`, axiosConfig.getConfig());
+		
+		return fetchResult;
+	}
+	catch (err) {
+		throw err;
+	}
+}
+
+const fetchExamAssignment = async (examId, userId) =>
+{
+	try {
+		let fetchResult = await axios.get(`http://localhost:8080/tenttisuoritukset/kayttaja/${userId}/tentti/${examId}`, axiosConfig.getConfig());
+		return fetchResult;
+	}
+	catch (err) {
+		throw err;
+	}
+}
 
 const addExam = async () =>
 {
@@ -49,6 +89,7 @@ const fetchQuestionAndAnswers = async (questionId) =>
 	if (fetchResult.data?.length == 0) {
 		return undefined;
 	}
+	//TODO server should do this
 	let question = {id: fetchResult.data[0].id, text: fetchResult.data[0].text, number: fetchResult.data[0].number, 
 		points: fetchResult.data[0].points, answers: []};
 	let result = fetchResult.data.reduce((acc, curr) => {
@@ -168,5 +209,5 @@ const updateQuestionDataForExam = async (examId, questionId, number, points) =>
 	}
 }
 
-export {addExam, removeExam, fetchQuestionAndAnswers, fetchQuestionsForExam, fetchQuestionsAndAnswersForExam, updateExam, 
+export {fetchExams, fetchExam, fetchExamAssignment, addExam, removeExam, fetchQuestionAndAnswers, fetchQuestionsForExam, fetchQuestionsAndAnswersForExam, updateExam, 
 	addNewQuestionToExam, updateQuestion, updateQuestionDataForExam, removeQuestionFromExam};

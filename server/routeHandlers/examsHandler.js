@@ -44,7 +44,7 @@ router.get('/:examId', verifyToken, async (req, res) =>
     return;
   }
 	//const includeCorrectness = req.query.oikeat && await userInRole(req.decodedToken, roles.roles().admin);
-	const includeQuestionsAndAnswers = req.query.kysymykset;
+	const includeQuestionsAndAnswers = (req.query.kysymykset === 'true');
 	const examIdNr = new Number(examIdParam);
   try {
 		let exam;

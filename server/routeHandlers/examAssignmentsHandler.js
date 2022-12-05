@@ -81,7 +81,10 @@ router.get('/kayttaja/:userId', verifyToken, async (req, res) =>
 			return;
 		}
 		const result = await dbConnPool().query(
-			"SELECT * FROM tentti_suoritus WHERE kayttaja_id=$1 AND tentti_id=$2", [userIdParam, examIdParam]);
+			`SELECT
+				tentti_id AS exam_id, kayttaja_id AS user_id, aloitusaika as begin, vastaukset AS answers, pisteet AS points, 
+				voimassa AS available, suoritettu AS completed, hyvaksytty AS approved, aloitettu as started
+				FROM tentti_suoritus WHERE kayttaja_id=$1 AND tentti_id=$2`, [userIdParam, examIdParam]);
 		if (result.rows[0])
 		 	res.status(200).send({resultStatus: 'success', data: result.rows[0]});
 		else

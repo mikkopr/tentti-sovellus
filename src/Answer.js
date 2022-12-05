@@ -1,17 +1,19 @@
 
-const Answer = (props) => {
-    return (
-        <div>
-            <input type='checkbox' name='answer' 
-                value={props.answer.number}
-                checked={props.answer.selected}
-                onChange={(event) =>
-                    props.onAnswerChanged(
-                        event.target.checked, props.questionIndex, props.answerIndex)
-                }
-            />
-            {props.answer.answer}
-        </div>);
+const Answer = (props) => 
+{
+	function handleAnswerCheckedStateChanged(checked)
+	{
+		props.dispatch({type: 'EXAM_EVENT_ANSWER_CHANGED', payload: {answerId: props.answer.id, questionId: props.questionId, checked: checked}});
+	}
+
+	return (
+		<div>
+			<input type='checkbox' name='answer' 
+				checked={props.checked}
+				onChange={(event) => handleAnswerCheckedStateChanged(event.target.checked)}
+      />
+      {props.answer.text}
+    </div>);
 }
 
 export default Answer;

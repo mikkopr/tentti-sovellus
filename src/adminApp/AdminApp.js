@@ -14,6 +14,18 @@ import ErrorMessage from '../ErrorMessage'
 import QuestionList from './QuestionList';
 import ExamList from './ExamList';
 import Toolbar from './Toolbar';
+import ExamEvent from '../ExamEvent';
+
+import * as examService from '../dataFunctions/examDataFunctions'
+
+
+const initialStateExamEvent = {
+	examId: undefined, 
+	exam: undefined, 
+	examAssignment: undefined, 
+	givenAnswers: undefined, //map, keys question ids. Values are sets of answer ids
+	initializing: false, 
+	underway: false};
 
 const initialState = 
 {
@@ -22,6 +34,7 @@ const initialState =
 	//activeExam: undefined,
 	questionDataArray: undefined, //question data for selected exam, no answers
   selectedExamIndex: -1,
+	examEvent: initialStateExamEvent,
   failedToSave: false,
   dataFetchRequired: true,
   loggedIn: false,
@@ -52,7 +65,8 @@ const AdminApp = () =>
     const fetchData = async () => {
       console.log("Fetching data");
       try {
-        const result = await axios(SERVER + '/tentit', axiosConfig.getConfig());
+        //const result = await axios(SERVER + '/tentit', axiosConfig.getConfig());
+				const result = await examService.fetchExams();
         dispatch({type: 'DATA_RECEIVED', payload: result.data});
       }
       catch (error) {
@@ -83,6 +97,39 @@ const AdminApp = () =>
       postData();
     }
   }, [examsState.loginRequested, examsState.loggedIn]);
+
+	/**
+	 * Fetches data for exam the event when an event begins
+	 */
+	useEffect ( () =>
+  {
+    const fetchData = async () => {
+      console.log("Fetching data for exam event");
+      try {
+        const examResult = await examService.fetchExam(examsState.examEvent.examId, true);
+				if (examResult.status == 204) {
+					dispatch({type: 'EXAM_EVENT_FAILED_TO_FETCH_DATA', payload: new Error(`Exam not found for id=${examsState.examEvent.examId}`)});
+					return;
+				}
+				const assignmentResult = await examService.fetchExamAssignment(examsState.examEvent.examId, examsState.user.userId);
+				//Server's examAssignemntsHandler responds always 200, the body contains info about success or failure
+				if (assignmentResult.data.resultStatus == 'failure') {
+					//TODO resultCodes
+					dispatch({type: 'EXAM_EVENT_FAILED_TO_FETCH_DATA', 
+						payload: new Error(`EXAM_EVENT_FAILED_TO_FETCH_DATA examId=examsState.examEvent.examId. Message from server: ${assignmentResult.data.message}`)});
+					return;
+				}
+        dispatch({type: 'EXAM_EVENT_DATA_RECEIVED', payload: {exam: examResult.data, examAssignment: assignmentResult.data.data}});
+      }
+      catch (error) {
+        console.log("Failed to fetch data for exam event");
+        dispatch({type: 'EXAM_EVENT_FAILED_TO_FETCH_DATA', payload: error});
+      }
+    }
+    if (examsState.examEvent?.initializing) {
+      fetchData();
+    }
+  }, [examsState.examEvent.initializing]);
 
 	function handleActiveExamChanged(state, payload)
 	{
@@ -177,6 +224,40 @@ const AdminApp = () =>
 		return {...state, failedToSave: true, showError: true, errorMessage: errorMessageToUser};
 	}
 
+	/**
+		* Handlers for exam event
+		*/
+	
+	function handleExamEventBeginRequested(state, payload)
+	{
+		return {...state, examEvent: {...initialStateExamEvent, examId: payload.examId, initializing: true},
+			showExamList: false, showExam: false, showError: false, errorMessage: ''};
+	}
+
+	function handleExamEventDataReceived(state, payload)
+	{
+		const givenAnswers = answersMapFromAnswersArray(payload.examAssignment.answers.answers);
+		const examEvent = {...state.examEvent, exam: payload.exam, examAssignment: payload.examAssignment, 
+			givenAnswers: givenAnswers, initializing: false, underway: true};
+		return {...state, examEvent: examEvent, showError: false};
+		/*"answers": {
+			"answers": [
+				{"questionId": 15, "answerIds": [9,29]},
+				{"questionId": 16, "answerIds": [11]} ]},*/
+	}
+
+	function handleExamEventAnswerChanged(state, payload)
+	{
+
+	}
+
+	function handleExamEventFailedToFetchData(state, payload)
+	{
+		const errorMessageToUser = errorMessageForError(payload);
+		//TODO
+		return {...state, examEvent: {...initialStateExamEvent}, showError: true, errorMessage: errorMessageToUser};
+	}
+
   function reducer(state, action)
   {
     let stateCopy = {...state, exams: [...state.exams]};
@@ -211,7 +292,7 @@ const AdminApp = () =>
 				console.log('QUESTION_NUMBER_CHANGED');
 				return handlequestionNumberChanged(state, action.payload);
 			
-				case 'QUESTION_POINTS_CHANGED':
+			case 'QUESTION_POINTS_CHANGED':
 				console.log('QUESTION_POINTS_CHANGED');
 				return handlequestionPointsChanged(state, action.payload)
 
@@ -321,6 +402,26 @@ const AdminApp = () =>
 			case 'HIDE_ERROR_REQUESTED':
 				return {...state, showError: false};
 			
+			/**
+			 * Exam event
+			 */
+
+			case 'EXAM_EVENT_BEGIN_REQUESTED':
+				console.log('EXAM_EVENT_BEGIN_REQUESTED');
+				return handleExamEventBeginRequested(state, action.payload);
+
+			case 'EXAM_EVENT_DATA_RECEIVED':
+				console.log('EXAM_EVENT_DATA_RECEIVED');
+				return handleExamEventDataReceived(state, action.payload);
+		
+			case 'EXAM_EVENT_ANSWER_CHANGED':
+				console.log('EXAM_EVENT_ANSWER_CHANGED');
+				return handleExamEventAnswerChanged(state, action.payload);
+
+			case 'EXAM_EVENT_FAILED_TO_FETCH_DATA':
+				console.log('EXAM_EVENT_FAILED_TO_FETCH_DATA');
+				return handleExamEventFailedToFetchData(state, action.payload);
+
 			default:
         throw Error('Unknown event: ' + action.type);
     }
@@ -337,7 +438,7 @@ const AdminApp = () =>
 			{examsState.showRegister && <Registration dispatch={dispatch} duplicate={examsState.duplicateEmail}/>}
 			{examsState.showLogin && <Login dispatch={dispatch}/>}
 
-      {examsState.loggedIn && examsState.showExamList && <ExamList exams={examsState.exams} dispatch={dispatch}/>}
+      {examsState.loggedIn && examsState.showExamList && <ExamList exams={examsState.exams} admin={examsState.user?.admin} dispatch={dispatch}/>}
       {examsState.loggedIn && examsState.selectedExamIndex !== -1 && examsState.showExam && 
 				(<>
 					<EditExam key={examsState.exams[examsState.selectedExamIndex].id} 
@@ -345,9 +446,27 @@ const AdminApp = () =>
 					<QuestionList examId={examsState.exams[examsState.selectedExamIndex].id} 
 						questionDataArray={examsState.questionDataArray} dispatch={dispatch}/>
 				</>)}
+			
+			{examsState.examEvent.underway && <ExamEvent examEvent={examsState.examEvent} dispatch={dispatch}/>}
       
     </div>
     )
+}
+
+function answersMapFromAnswersArray(answersArray)
+{
+	const initial = new Map();
+	const result = answersArray.reduce((map, curr) => {
+		const answers = new Set();
+		curr.answersId.forEach(item => answers.add(item));
+		map.set(curr.id, answers);
+		return map;
+	}, initial);
+	return result;
+	/*"answers": {
+		"answers": [
+			{"questionId": 15, "answerIds": [9,29]},
+			{"questionId": 16, "answerIds": [11]} ]},*/
 }
 
 function errorMessageForError(error)

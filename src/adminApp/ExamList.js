@@ -48,6 +48,12 @@ const ExamList = (props) =>
 		//TODO
 	}
 
+	function handleBeginExamAssignmentClicked(examId)
+	{
+		//Root component handles data loading
+		props.dispatch({type: 'EXAM_EVENT_BEGIN_REQUESTED', payload: {examId: examId}})
+	}
+
 	return (
 		<div>
 			<button type='button' onClick={(event) => handleAddExamClicked()}>Uusi tentti</button>
@@ -56,9 +62,10 @@ const ExamList = (props) =>
 					return (
 						<div key={item.id}>
 							<EditExam exam={item} dispatch={props.dispatch}/>
-							<button type='button' onClick={(event) => handleOpenExamClicked(item.id)}>Avaa</button>
-							<button type='button' onClick={(event) => handleCloneExamClicked(item.id)}>Kloonaa</button>
-							<button type='button' onClick={(event) => handleRemoveExamClicked(item.id)}>Poista</button>
+							{props.admin && <button type='button' onClick={(event) => handleOpenExamClicked(item.id)}>Avaa</button>}
+							{props.admin && <button type='button' onClick={(event) => handleCloneExamClicked(item.id)}>Kloonaa</button>}
+							{props.admin && <button type='button' onClick={(event) => handleRemoveExamClicked(item.id)}>Poista</button>}
+							{!props.admin && <button type='button' onClick={(event) => handleBeginExamAssignmentClicked(item.id)}>Aloita</button>}
 						</div>
 					)
 					})}
