@@ -3,8 +3,9 @@ const { default: axios } = require('axios');
 const express = require('express');
 
 const {dbConnPool} = require('../db');
-const {fetchExams, fetchExam, addExam, deleteExam, updateExam} = require('../examFunctions');
+const {fetchExams, fetchExam, fetchExamIncludingAnswers, addExam, deleteExam, updateExam} = require('../examFunctions');
 const {verifyToken, verifyAdminRole, validateReqParamId, validateNumber, validateDate} = require('../validateFunctions');
+const roles = require('../roles');
 
 const router = express.Router();
 
@@ -30,6 +31,11 @@ router.get('/', verifyToken, async (req, res) =>
 
 //TODO regexp in parentheses does not work, node version?
 //app.get('/tentti/:examId(\d+)', async (req, res) => {
+
+/**
+ * Response contains exam. If the query string value of kysymykset is true,
+ * the exam contains also the questions and answers without correctness information.
+ */
 router.get('/:examId', verifyToken, async (req, res) => 
 {
   const examIdParam = validateReqParamId(req.params.examId);
@@ -37,12 +43,19 @@ router.get('/:examId', verifyToken, async (req, res) =>
     res.status(400).send('Invalid http requets parameter');
     return;
   }
-  let examRow = undefined;
+	//const includeCorrectness = req.query.oikeat && await userInRole(req.decodedToken, roles.roles().admin);
+	const includeQuestionsAndAnswers = req.query.kysymykset;
+	const examIdNr = new Number(examIdParam);
   try {
-    const examIdNr = new Number(examIdParam);
-    examRow = await fetchExam(dbConnPool(), examIdNr);
-    if (examRow !== undefined) {
-      res.status(200).send(examRow);
+		let exam;
+		if (includeQuestionsAndAnswers) {
+			exam = await fetchExamIncludingAnswers(dbConnPool(), examIdNr);
+		}
+		else {
+    	exam = await fetchExam(dbConnPool(), examIdNr);
+		}
+    if (exam !== undefined) {
+    	res.status(200).send(exam);
     }
     else {
       //No content

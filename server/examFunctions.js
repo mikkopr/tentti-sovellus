@@ -31,6 +31,39 @@ const fetchExam = async (pool, id) =>
   }
 };
 
+const fetchExamIncludingAnswers = async (pool, id) =>
+{
+	const text = 
+		`SELECT 
+		tentti.id, kysymys.id AS question_id, vastaus.id AS answer_id,
+		tentti.nimi AS name, tentti.alkuaika AS begin, tentti.loppuaika AS end, tentti.tekoaika_mins AS available_time,
+		kysymys.teksti AS question_text, tentti_kysymys_liitos.kysymys_numero AS number, tentti_kysymys_liitos.pisteet AS points,
+		vastaus.teksti AS answer_text
+		FROM tentti 
+		INNER JOIN tentti_kysymys_liitos ON tentti.id = tentti_kysymys_liitos.tentti_id
+		INNER JOIN kysymys ON kysymys.id=tentti_kysymys_liitos.kysymys_id
+		INNER JOIN vastaus ON kysymys.id=vastaus.kysymys_id
+		WHERE tentti_id=$1 ORDER BY kysymys.id`
+	
+	const queryResult = await pool.query(text, [id]);
+	if (queryResult.rowCount === 0) {
+		return undefined;
+	}
+	//OBS!: Its assumed that rows are ordered by question id
+	const rows = queryResult.rows;
+	const result = rows.reduce((exam, curr) => {
+			if (curr.question_id !== exam.questions.at(-1)?.id) {
+				exam.questions.push({id: curr.question_id, text: curr.question_text, number: curr.number, points: curr.points, answers: []});
+			}
+			exam.questions.at(-1).answers.push({id: curr.answer_id, text: curr.answer_text});
+			return exam;
+		}, 
+		{id: rows[0].id, name: rows[0].name, begin: rows[0].begin, end: rows[0].end, available_time: rows[0].available_time, questions: []});
+	
+	return result;
+}
+
+
 //NOTE column names in result are uncapitalized even when defined othewise in AS
 const fetchExams = async (pool) =>
 {
@@ -61,4 +94,4 @@ const updateExam = async (pool, examId, data) =>
   return result.rows[0];
 }
 
-module.exports = {addExam, deleteExam, updateExam, fetchExam, fetchExams};
+module.exports = {addExam, deleteExam, updateExam, fetchExam, fetchExamIncludingAnswers, fetchExams};
