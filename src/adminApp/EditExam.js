@@ -4,6 +4,8 @@ import '../App.css';
 import {updateExam} from '../dataFunctions/examDataFunctions';
 import { useEffect, useState } from 'react';
 
+const MAX_VALUE_SMALL_INT = 32768;
+
 const EditExam = (props) => 
 {
 	console.log("EditExam");
@@ -40,49 +42,51 @@ const EditExam = (props) =>
 
 	function handleExamNameChanged(value)
 	{
-		setModifiedState({...modifiedState, modified: true, name: value});
+		const nextState = modifiedStateFromPrevious(modifiedState, props);
+		nextState.name = value;
+		setModifiedState(nextState);
 	}
 
 	function handleExamBeginChanged(value)
 	{
-		//If the date input is cleared the value is ''
-		//Empty date is ok
-		if (value === '' || dateValid(value)) {
-			setModifiedState({...modifiedState, modified: true, invalidBeginDate: false, beginDate: value});
-		}
-		else {
-			//If normal text box, date can be invalid
-			setModifiedState({...modifiedState, modified: true, invalidBeginDate: true, beginDate: value});
-		}
+		const nextState = modifiedStateFromPrevious(modifiedState, props);
+		//Check input date because the value may come from a normal text box
+		//If the date input is cleared the value is '', empty date is ok
+		nextState.invalidBeginDate = !(value === '' || dateValid(value));
+		nextState.beginDate = value;
+		setModifiedState(nextState);
 	}
 
 	function handleExamBeginTimeChanged(value)
 	{
-		if (timeValid(value))
-			setModifiedState({...modifiedState, modified: true, invalidBeginTime: false, beginTime: value});
-		else
-			setModifiedState({...modifiedState, modified: true, invalidBeginTime: true, beginTime: value});
+		const nextState = modifiedStateFromPrevious(modifiedState, props);
+		nextState.invalidBeginTime = !timeValid(value);
+		nextState.beginTime = value;
+		setModifiedState(nextState);
 	}
 
 	function handleExamEndChanged(value)
 	{
-		setModifiedState({...modifiedState, modified: true, endDate: value});
+		const nextState = modifiedStateFromPrevious(modifiedState, props);
+		nextState.invalidEndDate = !(value === '' || dateValid(value));
+		nextState.endDate = value;
+		setModifiedState(nextState);
 	}
 
 	function handleExamEndTimeChanged(value)
 	{
-		if (timeValid(value))
-			setModifiedState({...modifiedState, modified: true, invalidEndTime: false, endTime: value});
-		else
-			setModifiedState({...modifiedState, modified: true, invalidEndTime: true, endTime: value});
+		const nextState = modifiedStateFromPrevious(modifiedState, props);
+		nextState.invalidEndTime = !timeValid(value);
+		nextState.endTime = value;
+		setModifiedState(nextState);
 	}
 
 	function handleExamAvailableTimeChanged(value)
 	{
-		if (isPositiveNumber(value, 32768))
-			setModifiedState({...modifiedState, modified: true, invalidAvailableTime: false, available_time: value});
-		else
-			setModifiedState({...modifiedState, modified: true, invalidAvailableTime: true, available_time: value});
+		const nextState = modifiedStateFromPrevious(modifiedState, props);
+		nextState.invalidAvailableTime = !isPositiveNumber(value, MAX_VALUE_SMALL_INT);
+		nextState.available_time = value;
+		setModifiedState(nextState);
 	}
 
 	function modifiedStateFromProps(currentProps)
@@ -93,6 +97,18 @@ const EditExam = (props) =>
 			beginDate: dateStringFromIsoString(currentProps.exam.begin), beginTime: timeStringFromIsoString(currentProps.exam.begin),
 			endDate: dateStringFromIsoString(currentProps.exam.end), endTime: timeStringFromIsoString(currentProps.exam.end),
 			available_time: currentProps.exam.available_time};
+	}
+
+	function modifiedStateFromPrevious(state, props)
+	{
+		let nextState;
+		//If a new edit session begins initialize the modified state from props
+		if (!state || !state.modified)
+			nextState = modifiedStateFromProps(props);
+		else
+			nextState = {...state};
+		nextState.modified = true;
+		return nextState;
 	}
 
 	/**
