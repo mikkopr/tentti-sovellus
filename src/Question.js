@@ -10,7 +10,7 @@ const Question = (props) => {
 								key={answer.id}
 								answer={answer}
 								questionId={props.question.id}
-								checked={props.givenAnswers.get(props.question.id)?.has(answer.id)}
+								checked={props.givenAnswers.has(props.question.id) && props.givenAnswers.get(props.question.id).has(answer.id)}
 								dispatch={props.dispatch}/>
           )}
 				</div>

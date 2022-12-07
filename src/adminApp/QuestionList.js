@@ -42,7 +42,7 @@ const QuestionList = (props) =>
 			return (
 				<div key={item.id}>
 					<QuestionHeader examId={props.examId} questionId={item.id} number={item.number} points={item.points}
-						dispatch={props.dispatch}/>
+						allowEdit={true} dispatch={props.dispatch}/>
 					<EditQuestion
 						questionId={item.id}
 						dispatch={props.dispatch}

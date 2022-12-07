@@ -25,7 +25,11 @@ const initialStateExamEvent = {
 	examAssignment: undefined, 
 	givenAnswers: undefined, //map, keys question ids. Values are sets of answer ids
 	initializing: false, 
-	underway: false};
+	underway: false, //TODO examAssignment.started
+	saveRequested: false,
+	saveRequired: false,
+	failedToSave: false
+};
 
 const initialState = 
 {
@@ -116,7 +120,7 @@ const AdminApp = () =>
 				if (assignmentResult.data.resultStatus == 'failure') {
 					//TODO resultCodes
 					dispatch({type: 'EXAM_EVENT_FAILED_TO_FETCH_DATA', 
-						payload: new Error(`EXAM_EVENT_FAILED_TO_FETCH_DATA examId=examsState.examEvent.examId. Message from server: ${assignmentResult.data.message}`)});
+						payload: new Error(`EXAM_EVENT_FAILED_TO_FETCH_DATA examId=${examsState.examEvent.examId}. Message from server: ${assignmentResult.data.message}`)});
 					return;
 				}
         dispatch({type: 'EXAM_EVENT_DATA_RECEIVED', payload: {exam: examResult.data, examAssignment: assignmentResult.data.data}});
@@ -130,6 +134,33 @@ const AdminApp = () =>
       fetchData();
     }
   }, [examsState.examEvent.initializing]);
+
+	/**
+	 * Saves exam event data
+	 */
+	useEffect ( () =>
+  {
+    const saveData = async () => {
+      console.log("Saving exam event data");
+      try {
+        const result = await examService.updateExamAssignment(examsState.examEvent?.examAssignment);
+				//Server's examAssignemntsHandler responds always 200, the body contains info about success or failure
+				if (result.data.resultStatus == 'failure') {
+					//TODO resultCodes
+					dispatch({type: 'EXAM_EVENT_FAILED_TO_SAVE', 
+						payload: new Error(`EXAM_EVENT_FAILED_TO_SAVE examId=${examsState.examEvent.examId}. Message from server: ${result.data.message}`)});
+					return;
+				}
+        dispatch({type: 'EXAM_EVENT_DATA_SAVED'});
+      }
+      catch (error) {
+        dispatch({type: 'EXAM_EVENT_FAILED_TO_SAVE', payload: error});
+      }
+    }
+    if (examsState.examEvent?.saveRequested && examsState.examEvent?.saveRequired) {
+      saveData();
+    }
+  }, [examsState.examEvent.saveRequested, examsState.examEvent.saveRequired]);
 
 	function handleActiveExamChanged(state, payload)
 	{
@@ -237,18 +268,49 @@ const AdminApp = () =>
 	function handleExamEventDataReceived(state, payload)
 	{
 		const givenAnswers = answersMapFromAnswersArray(payload.examAssignment.answers.answers);
-		const examEvent = {...state.examEvent, exam: payload.exam, examAssignment: payload.examAssignment, 
+		const examEvent = {...state.examEvent, exam: payload.exam, examAssignment: {...payload.examAssignment, started: true}, 
 			givenAnswers: givenAnswers, initializing: false, underway: true};
+		examEvent.exam.questions.sort((a, b) => a.number - b.number);
 		return {...state, examEvent: examEvent, showError: false};
-		/*"answers": {
-			"answers": [
-				{"questionId": 15, "answerIds": [9,29]},
-				{"questionId": 16, "answerIds": [11]} ]},*/
 	}
 
 	function handleExamEventAnswerChanged(state, payload)
 	{
+		const givenAnswers = state.examEvent.givenAnswers;
+		let answersForQuestion = givenAnswers.get(payload.questionId);
+		//Add entry for the answer if the answer is checked, otherwise update
+		if (!answersForQuestion) {
+			if (payload.checked)
+				givenAnswers.set(payload.questionId, new Set([payload.answerId]));
+		}
+		else {
+			if (payload.checked)
+				answersForQuestion.add(payload.answerId);
+			else
+				answersForQuestion.delete(payload.answerId);
+		}
+		const nextState = {...state, examEvent: {...state.examEvent, exam: {...state.examEvent.exam}, saveRequired: true}};
+		const questionIndex = state.examEvent.exam.questions.findIndex(item => item.id === payload.questionId);
+		const answerIndex = state.examEvent.exam.questions[questionIndex].answers.findIndex(item => item.id === payload.answerId);
+		nextState.examEvent.exam.questions = [...state.examEvent.exam.questions];
+		nextState.examEvent.exam.questions[questionIndex].answers = [...state.examEvent.exam.questions[questionIndex].answers];
+		nextState.examEvent.exam.questions[questionIndex].answers[answerIndex] = {...state.examEvent.exam.questions[questionIndex].answers[answerIndex]};
+		return nextState;
+	}
 
+	function handleExamEventSaveData(state)
+	{
+		const givenAnswersArr = answersArrayFromAnswersMap(state.examEvent.givenAnswers);
+		return {...state,
+			examEvent: {...state.examEvent, saveRequested: true,
+				examAssignment: {...state.examEvent.examAssignment, answers: {answers: givenAnswersArr}}
+			}
+			, showError: false, errorMessage: ''};
+
+		/*"answers": {
+		"answers": [
+			{"questionId": 15, "answerIds": [9,29]},
+			{"questionId": 16, "answerIds": [11]} ]},*/
 	}
 
 	function handleExamEventFailedToFetchData(state, payload)
@@ -256,6 +318,12 @@ const AdminApp = () =>
 		const errorMessageToUser = errorMessageForError(payload);
 		//TODO
 		return {...state, examEvent: {...initialStateExamEvent}, showError: true, errorMessage: errorMessageToUser};
+	}
+
+	function handleExamEventFailedToSave(state, payload)
+	{
+		const errorMessageToUser = errorMessageForError(payload);
+		return {...state, examEvent: {...state.examEvent, saveRequested: false}, showError: true, errorMessage: errorMessageToUser};
 	}
 
   function reducer(state, action)
@@ -414,13 +482,25 @@ const AdminApp = () =>
 				console.log('EXAM_EVENT_DATA_RECEIVED');
 				return handleExamEventDataReceived(state, action.payload);
 		
+			case 'EXAM_EVENT_DATA_SAVED':
+				console.log('EXAM_EVENT_DATA_SAVED');
+				return {...state, examEvent: {...state.examEvent, saveRequested: false, saveRequired: false, saving: false}};
+
 			case 'EXAM_EVENT_ANSWER_CHANGED':
 				console.log('EXAM_EVENT_ANSWER_CHANGED');
 				return handleExamEventAnswerChanged(state, action.payload);
 
+			case 'EXAM_EVENT_SAVE_CLICKED':
+				console.log('EXAM_EVENT_SAVE_CLICKED');
+				return handleExamEventSaveData(state);
+
 			case 'EXAM_EVENT_FAILED_TO_FETCH_DATA':
 				console.log('EXAM_EVENT_FAILED_TO_FETCH_DATA');
 				return handleExamEventFailedToFetchData(state, action.payload);
+
+			case 'EXAM_EVENT_FAILED_TO_SAVE':
+				console.log('EXAM_EVENT_FAILED_TO_SAVE');
+				return handleExamEventFailedToSave(state, action.payload);
 
 			default:
         throw Error('Unknown event: ' + action.type);
@@ -447,7 +527,7 @@ const AdminApp = () =>
 						questionDataArray={examsState.questionDataArray} dispatch={dispatch}/>
 				</>)}
 			
-			{examsState.examEvent.underway && <ExamEvent examEvent={examsState.examEvent} dispatch={dispatch}/>}
+			{examsState.loggedIn && examsState.examEvent.underway && <ExamEvent examEvent={examsState.examEvent} dispatch={dispatch}/>}
       
     </div>
     )
@@ -457,16 +537,29 @@ function answersMapFromAnswersArray(answersArray)
 {
 	const initial = new Map();
 	const result = answersArray.reduce((map, curr) => {
-		const answers = new Set();
-		curr.answersId.forEach(item => answers.add(item));
-		map.set(curr.id, answers);
-		return map;
-	}, initial);
+			const answers = new Set();
+			curr.answerIds.forEach(item => answers.add(item));
+			map.set(curr.questionId, answers);
+			return map;
+		}, initial);
 	return result;
 	/*"answers": {
 		"answers": [
 			{"questionId": 15, "answerIds": [9,29]},
 			{"questionId": 16, "answerIds": [11]} ]},*/
+}
+
+function answersArrayFromAnswersMap(answersMap)
+{
+	if (!answersMap) {
+		return [];
+	}
+	const result = [];
+	for (let questionId of answersMap.keys()) {
+		let answerIds = answersMap.get(questionId);
+		result.push({questionId: questionId, answerIds: Array.from(answerIds.values())});
+	}
+	return result;
 }
 
 function errorMessageForError(error)

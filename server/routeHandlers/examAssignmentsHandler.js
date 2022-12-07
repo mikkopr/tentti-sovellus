@@ -163,10 +163,6 @@ router.put('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) =>
 		return;
 	}
 	const data = req.body;
-  /*if (data == undefined || data.suoritettu === undefined || data.hyvaksytty === undefined || 
-      data.vastaukset === undefined) {
-    res.status(400).send('Invalid data in http request body');
-  }*/
 	let inAdminRole
 	try {
 		inAdminRole = await userInRole(req.decodedToken, roles.roles().admin);
@@ -190,6 +186,8 @@ router.put('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) =>
 			res.status(200).send(result.rows[0]);
 		}
 		else {
+			//aloitusaika as begin, vastaukset AS answers, pisteet AS points, 
+			//voimassa AS available, suoritettu AS completed, hyvaksytty AS approved, aloitettu as started
 			//Nothing to update if the user hasn't started the exam
 			if (!data.started) {
 				res.status(200).send({resultStatus: 'failure', resultCode: ResultCodes.examNotStarted});
@@ -200,16 +198,15 @@ router.put('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) =>
 			const timestamp = result.rows[0]?.current_timestamp; //!!
 			//Query data related to assignment
 			let text = `SELECT 
-				tentti_suoritus.available,
-				tentti_suoritus.started,
-				tentti_suoritus.completed,
-				tentti_suoritus.start_time,
-				tentti_suoritus.answers,
-				tentti.begin_time,
-				tentti.end_time,
-				tentti.available_time_mins
+				tentti_suoritus.voimassa AS available,
+				tentti_suoritus.aloitettu AS started,
+				tentti_suoritus.suoritettu AS completed,
+				tentti_suoritus.aloitusaika AS assignment_begin,
+				tentti_suoritus.vastaukset AS answers,
+				tentti.alkuaika AS exam_begin,
+				tentti.loppuaika AS exam_end,
+				tentti.tekoaika_mins AS available_time
 				FROM tentti_suoritus INNER JOIN tentti ON tentti_suoritus.tentti_id=tentti.id WHERE tentti_suoritus.tentti_id=$1`;
-			//let text = "SELECT tentti_suoritus.available,tentti_suoritus.started,tentti_suoritus.completed,tentti_suoritus.start_time,tentti_suoritus.answers,tentti.begin_time,tentti.end_time,tentti.available_time_mins FROM tentti_suoritus INNER JOIN tentti ON tentti_suoritus.tentti_id=tentti.id WHERE tentti_suoritus.tentti_id=$1";
 			let values = [examIdParam];
 			result = await dbConnPool().query(text, values);
 			const assignmentData = result.rows[0];
@@ -227,7 +224,7 @@ router.put('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) =>
 				return;
 			}
 			const currentTimeMs = new Date(timestamp).getTime();
-			const examBeginTimeMs = new Date(assignmentData.begin_time).getTime();
+			const examBeginTimeMs = new Date(assignmentData.exam_begin).getTime();
 			//Too early
 			if (currentTimeMs < examBeginTimeMs) {
 				res.status(200).send({resultStatus: 'failure', resultCode: ResultCodes.examUnavailable});
@@ -235,9 +232,9 @@ router.put('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) =>
 			}
 			//From now on database is updated
 			const updateData = {...assignmentData};			
-			const startTimeMs = assignmentData.started ? new Date(assignmentData.start_time).getTime() : currentTimeMs;
-			const examEndTimeMs = new Date(assignmentData.end_time).getTime(); //No answers accepted after this time
-			const examAvailableTimeMs = assignmentData.available_time_mins * 60 * 1000;
+			const startTimeMs = assignmentData.started ? new Date(assignmentData.assignment_begin).getTime() : currentTimeMs;
+			const examEndTimeMs = new Date(assignmentData.assignment_end).getTime(); //No answers accepted after this time
+			const examAvailableTimeMs = assignmentData.available_time * 60 * 1000;
 			//If time is out, mark the assignment completed but don't update answers
 			if (currentTimeMs > examEndTimeMs || currentTimeMs > startTimeMs + examAvailableTimeMs) {
 				updateData.started = true;
@@ -252,7 +249,7 @@ router.put('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) =>
 			//If got here the exam is ongoing and given answers are updated
 			if (!assignmentData.started) {
 				updateData.started = true;
-				updateData.start_time = new Date(timestamp);
+				updateData.assignment_begin = new Date(timestamp);
 			}
 			updateData.answers = data.answers;
 			let updateResult = await updateExamAssignment(userIdParam, examIdParam, updateData);
@@ -271,8 +268,9 @@ router.put('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) =>
 
 const updateExamAssignment = async (userId, examId, data) => 
 {
-	const text = "UPDATE tentti_suoritus SET started=$3,completed=$4,start_time=$5,answers=$6 WHERE kayttaja_id=$1 AND tentti_id=$2 RETURNING *"
-	const values = [userId, examId, data.started, data.completed, data.start_time, data.answers];
+	const text = `UPDATE tentti_suoritus SET aloitettu=$3,suoritettu=$4,aloitusaika=$5,vastaukset=$6 WHERE kayttaja_id=$1 AND tentti_id=$2
+		RETURNING kayttaja_id AS user_id, tentti_id AS exam_id`;
+	const values = [userId, examId, data.started, data.completed, data.assignment_begin, data.answers];
 	const result = await dbConnPool().query(text, values);
 	return result.rows[0];
 }

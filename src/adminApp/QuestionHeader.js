@@ -42,9 +42,13 @@ const QuestionHeader = (props) =>
 
 	return (
 		<div>
-			<input type='text' value={props.number} onChange={(event) =>  handleQuestionNumberChanged(event.target.value)}/>
+			{props.allowEdit ? 
+				<input type='text' value={props.number} onChange={(event) =>  handleQuestionNumberChanged(event.target.value)}/> : props.number
+			}
 			Pisteet:
-			<input type='text' value={props.points} onChange={(event) =>  handleQuestionPointsChanged(event.target.value)}/>
+			{props.allowEdit ?
+				<input type='text' value={props.points} onChange={(event) =>  handleQuestionPointsChanged(event.target.value)}/> : props.points
+			}
 		</div>
 	);
 }

@@ -153,6 +153,19 @@ const updateExam = async (exam) =>
 	return fetchResult.data;
 }
 
+const updateExamAssignment = async (examAssignment) =>
+{
+	let fetchResult = undefined;
+	try {
+		fetchResult = await axios.put(`http://localhost:8080/tenttisuoritukset/kayttaja/${examAssignment.user_id}/tentti/${examAssignment.exam_id}`,
+			examAssignment, axiosConfig.getConfig());
+	}
+	catch (err) {
+		throw err;
+	}
+	return fetchResult.data;
+}
+
 /**
  * Returns the created question id, text, number and points if succesful.
  */
@@ -209,5 +222,5 @@ const updateQuestionDataForExam = async (examId, questionId, number, points) =>
 	}
 }
 
-export {fetchExams, fetchExam, fetchExamAssignment, addExam, removeExam, fetchQuestionAndAnswers, fetchQuestionsForExam, fetchQuestionsAndAnswersForExam, updateExam, 
+export {fetchExams, fetchExam, fetchExamAssignment, addExam, removeExam, updateExamAssignment, fetchQuestionAndAnswers, fetchQuestionsForExam, fetchQuestionsAndAnswersForExam, updateExam, 
 	addNewQuestionToExam, updateQuestion, updateQuestionDataForExam, removeQuestionFromExam};

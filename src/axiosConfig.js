@@ -1,7 +1,7 @@
 
 const config = {
 	headers: {Authorization: `Bearer `},
-	timeout: 10000
+	timeout: 1000000
 };
 
 const getConfig = () => {

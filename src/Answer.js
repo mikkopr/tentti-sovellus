@@ -3,7 +3,8 @@ const Answer = (props) =>
 {
 	function handleAnswerCheckedStateChanged(checked)
 	{
-		props.dispatch({type: 'EXAM_EVENT_ANSWER_CHANGED', payload: {answerId: props.answer.id, questionId: props.questionId, checked: checked}});
+		props.dispatch({type: 'EXAM_EVENT_ANSWER_CHANGED', 
+			payload: {answerId: props.answer.id, questionId: props.questionId, checked: checked}});
 	}
 
 	return (
