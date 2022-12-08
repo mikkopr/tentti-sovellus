@@ -10,6 +10,8 @@ import ConnectionError from '../errors/ConnectionError'
 import {fetchAnswers} from './answerDataFunctions';
 
 
+//TODO Sometimes data is returned and sometimes response!!!!!!!!!!!
+
 const fetchExams = async () =>
 {
 	try {
@@ -40,11 +42,28 @@ const fetchExam = async (examId, includeQuestions) =>
 	}
 }
 
+/**
+ * Return exam assignment data for given user and exam
+ */
 const fetchExamAssignment = async (examId, userId) =>
 {
 	try {
 		let fetchResult = await axios.get(`http://localhost:8080/tenttisuoritukset/kayttaja/${userId}/tentti/${examId}`, axiosConfig.getConfig());
 		return fetchResult;
+	}
+	catch (err) {
+		throw err;
+	}
+}
+
+/**
+ * Assigns user to the exam if not already assigned.
+ */
+const assignUserToExam = async (examId, userId) =>
+{
+	try {
+		let fetchResult = await axios.post(`http://localhost:8080/tenttisuoritukset/kayttaja/${userId}/tentti/${examId}`, {}, axiosConfig.getConfig());
+		return fetchResult.data;
 	}
 	catch (err) {
 		throw err;
@@ -222,5 +241,5 @@ const updateQuestionDataForExam = async (examId, questionId, number, points) =>
 	}
 }
 
-export {fetchExams, fetchExam, fetchExamAssignment, addExam, removeExam, updateExamAssignment, fetchQuestionAndAnswers, fetchQuestionsForExam, fetchQuestionsAndAnswersForExam, updateExam, 
+export {fetchExams, fetchExam, fetchExamAssignment, assignUserToExam, addExam, removeExam, updateExamAssignment, fetchQuestionAndAnswers, fetchQuestionsForExam, fetchQuestionsAndAnswersForExam, updateExam, 
 	addNewQuestionToExam, updateQuestion, updateQuestionDataForExam, removeQuestionFromExam};

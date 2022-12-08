@@ -151,7 +151,7 @@ const AdminApp = () =>
 						payload: new Error(`EXAM_EVENT_FAILED_TO_SAVE examId=${examsState.examEvent.examId}. Message from server: ${result.data.message}`)});
 					return;
 				}
-        dispatch({type: 'EXAM_EVENT_DATA_SAVED'});
+        dispatch({type: 'EXAM_EVENT_DATA_SAVED', payload: result.data});
       }
       catch (error) {
         dispatch({type: 'EXAM_EVENT_FAILED_TO_SAVE', payload: error});
@@ -161,6 +161,26 @@ const AdminApp = () =>
       saveData();
     }
   }, [examsState.examEvent.saveRequested, examsState.examEvent.saveRequired]);
+
+
+	/************************************************
+	 * Event handlers
+	 */
+
+	function handleShowExamListClicked()
+	{
+		console.log('handleShowExamListClicked()');
+		dispatch({type: 'SHOW_EXAM_LIST_REQUESTED'});
+	}
+
+	/************************************************
+	 * Event handlers for reducer
+	 */
+
+	function handleUserAssignedToExam(state, payload)
+	{
+		return {...state};
+	}
 
 	function handleActiveExamChanged(state, payload)
 	{
@@ -298,11 +318,19 @@ const AdminApp = () =>
 		return nextState;
 	}
 
-	function handleExamEventSaveData(state)
+	/**
+	 * Request save by setting saveRequested as true, if save is required.
+	 * If force=true saveRequested and saveRequired are set true
+	 */
+	function handleExamEventSaveData(state, force)
 	{
+		//Don't save if not required
+		if (!force && !state.examEvent.saveRequired) {
+			return {...state};
+		}
 		const givenAnswersArr = answersArrayFromAnswersMap(state.examEvent.givenAnswers);
 		return {...state,
-			examEvent: {...state.examEvent, saveRequested: true,
+			examEvent: {...state.examEvent, saveRequested: true, saveRequired: true, failedToSave: false,
 				examAssignment: {...state.examEvent.examAssignment, answers: {answers: givenAnswersArr}}
 			}
 			, showError: false, errorMessage: ''};
@@ -311,6 +339,25 @@ const AdminApp = () =>
 		"answers": [
 			{"questionId": 15, "answerIds": [9,29]},
 			{"questionId": 16, "answerIds": [11]} ]},*/
+	}
+
+	function handleExamEventDataSaved(state, payload)
+	{
+		const receivedAssignment = payload;
+		const modifiedAssignment = {...state.examEvent.examAssignment, completed: receivedAssignment.completed,
+			checked: receivedAssignment.checked, points: receivedAssignment.points};
+		return {...state, showError: false, errorMessage: '',
+				examEvent: {...state.examEvent, examAssignment: modifiedAssignment, saveRequested: false, saveRequired: false,
+					failedToSave: false}
+			};
+	}
+
+	function handleExamEventFinishRequested(state)
+	{
+		//Request save and set state to completed
+		const nextState = handleExamEventSaveData(state, true);
+		nextState.examEvent.examAssignment.completed = true;
+		return nextState;
 	}
 
 	function handleExamEventFailedToFetchData(state, payload)
@@ -332,6 +379,10 @@ const AdminApp = () =>
     
     switch (action.type) 
 		{ 
+			case 'USER_ASSIGNED_TO_EXAM':
+				console.log('USER_ASSIGNED_TO_EXAM');
+				return handleUserAssignedToExam(state, action.payload);
+
 			case 'ACTIVE_EXAM_CHANGED':
 				console.log('ACTIVE_EXAM_CHANGED');
 				return handleActiveExamChanged(state, action.payload);
@@ -484,7 +535,7 @@ const AdminApp = () =>
 		
 			case 'EXAM_EVENT_DATA_SAVED':
 				console.log('EXAM_EVENT_DATA_SAVED');
-				return {...state, examEvent: {...state.examEvent, saveRequested: false, saveRequired: false, saving: false}};
+				return handleExamEventDataSaved(state, action.payload);
 
 			case 'EXAM_EVENT_ANSWER_CHANGED':
 				console.log('EXAM_EVENT_ANSWER_CHANGED');
@@ -494,6 +545,10 @@ const AdminApp = () =>
 				console.log('EXAM_EVENT_SAVE_CLICKED');
 				return handleExamEventSaveData(state);
 
+			case 'EXAM_EVENT_FINISH_CLICKED':
+				console.log('EXAM_EVENT_FINISH_CLICKED');
+				return handleExamEventFinishRequested(state);
+			
 			case 'EXAM_EVENT_FAILED_TO_FETCH_DATA':
 				console.log('EXAM_EVENT_FAILED_TO_FETCH_DATA');
 				return handleExamEventFailedToFetchData(state, action.payload);
@@ -518,8 +573,11 @@ const AdminApp = () =>
 			{examsState.showRegister && <Registration dispatch={dispatch} duplicate={examsState.duplicateEmail}/>}
 			{examsState.showLogin && <Login dispatch={dispatch}/>}
 
-      {examsState.loggedIn && examsState.showExamList && <ExamList exams={examsState.exams} admin={examsState.user?.admin} dispatch={dispatch}/>}
-      {examsState.loggedIn && examsState.selectedExamIndex !== -1 && examsState.showExam && 
+      {examsState.loggedIn && examsState.showExamList && 
+				<ExamList exams={examsState.exams} admin={examsState.user?.admin} userId={examsState.user.userId} dispatch={dispatch} 
+					handleShowExamListClicked={handleShowExamListClicked}/>}
+      
+			{examsState.loggedIn && examsState.selectedExamIndex !== -1 && examsState.showExam && 
 				(<>
 					<EditExam key={examsState.exams[examsState.selectedExamIndex].id} 
 						exam={examsState.exams[examsState.selectedExamIndex]} dispatch={dispatch}/>

@@ -4,7 +4,7 @@ const express = require('express');
 const { DatabaseError } = require('pg');
 
 const {dbConnPool} = require('../db');
-const {assignUserToExam} = require('../examAssignmentFunctions');
+const {assignUserToExam, calculateExamResults} = require('../examAssignmentFunctions');
 const {validateReqParamId, verifyToken, verifyAdminRole, userInRole} = require('../validateFunctions');
 const roles = require('../roles');
 
@@ -12,11 +12,12 @@ const router = express.Router();
 
 const ResultCodes = 
 {
-	dataNotFound: 1001,
-	examUnavailable: 1011,
-	examAvailableTimeEnded: 1012,
-	examNotStarted: 1013,
-	examCompleted: 1014,
+	dataNotFound: 1401,
+	examUnavailable: 1601,
+	examAvailableTimeEnded: 1602,
+	examNotStarted: 1603,
+	examCompleted: 1604,
+	userNotAssignedToExam: 1605
 }
 
 /**
@@ -64,7 +65,7 @@ router.get('/kayttaja/:userId', verifyToken, async (req, res) =>
 });
 
 /**
- * Returns the assingment of the user
+ * Returns the assingment of the user for the exam
  */
  router.get('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) => 
  {
@@ -83,7 +84,7 @@ router.get('/kayttaja/:userId', verifyToken, async (req, res) =>
 		const result = await dbConnPool().query(
 			`SELECT
 				tentti_id AS exam_id, kayttaja_id AS user_id, aloitusaika as begin, vastaukset AS answers, pisteet AS points, 
-				voimassa AS available, suoritettu AS completed, hyvaksytty AS approved, aloitettu as started
+				voimassa AS available, suoritettu AS completed, tarkistettu AS checked, hyvaksytty AS approved, aloitettu as started
 				FROM tentti_suoritus WHERE kayttaja_id=$1 AND tentti_id=$2`, [userIdParam, examIdParam]);
 		if (result.rows[0])
 		 	res.status(200).send({resultStatus: 'success', data: result.rows[0]});
@@ -106,7 +107,10 @@ router.get('/tentti/:examId', verifyToken, verifyAdminRole, async (req, res) =>
 });
 
 /**
- * Assings the user to the exam.
+ * Assingns the user to the exam.
+ * 
+ * If the user was succesfully assigned or the user was already assigned,
+ * responds with status code 200 and body: {resultStatus: 'success'}
  */
 router.post('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) =>
 {
@@ -122,8 +126,8 @@ try {
 		res.status(403).send('Ei käyttöoikeutta');
 		return;
 	}
-  const assingment = await assignUserToExam(dbConnPool(), userIdParam, examIdParam);
-  res.status(200).send(assingment);
+  const rowCount = await assignUserToExam(dbConnPool(), userIdParam, examIdParam);
+  res.status(200).send({resultStatus: 'success'});
 }
 catch (err) {
   if (err instanceof DatabaseError) {
@@ -133,8 +137,9 @@ catch (err) {
 			return;
     }
     else if (err.code == 23505) {
-      res.status(409).send('User is already assigned to the exam');
-      console.log('WARNING: Tried to insert a duplicate: ', err.message);
+      //res.status(409).send('User is already assigned to the exam');
+			res.status(200).send({resultStatus: 'success'});
+      //console.log('WARNING: Tried to insert a duplicate: ', err.message);
 			return;
     }
     else {
@@ -201,8 +206,10 @@ router.put('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) =>
 				tentti_suoritus.voimassa AS available,
 				tentti_suoritus.aloitettu AS started,
 				tentti_suoritus.suoritettu AS completed,
+				tentti_suoritus.tarkistettu AS checked,
 				tentti_suoritus.aloitusaika AS assignment_begin,
 				tentti_suoritus.vastaukset AS answers,
+				tentti_suoritus.pisteet AS points,
 				tentti.alkuaika AS exam_begin,
 				tentti.loppuaika AS exam_end,
 				tentti.tekoaika_mins AS available_time
@@ -233,7 +240,7 @@ router.put('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) =>
 			//From now on database is updated
 			const updateData = {...assignmentData};			
 			const startTimeMs = assignmentData.started ? new Date(assignmentData.assignment_begin).getTime() : currentTimeMs;
-			const examEndTimeMs = new Date(assignmentData.assignment_end).getTime(); //No answers accepted after this time
+			const examEndTimeMs = new Date(assignmentData.exam_end).getTime(); //No answers accepted after this time
 			const examAvailableTimeMs = assignmentData.available_time * 60 * 1000;
 			//If time is out, mark the assignment completed but don't update answers
 			if (currentTimeMs > examEndTimeMs || currentTimeMs > startTimeMs + examAvailableTimeMs) {
@@ -252,6 +259,19 @@ router.put('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) =>
 				updateData.assignment_begin = new Date(timestamp);
 			}
 			updateData.answers = data.answers;
+			//User finished the exam, calculate the results
+			if (data.completed) {
+				updateData.completed = true;
+				try {
+					//TODO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! why error in calculate function isn't catched
+					//Answer: because await was missing
+					updateData.points = await calculateExamResults(dbConnPool(), examIdParam, data.answers.answers);
+					updateData.checked = true;
+				}
+				catch (err) {
+					console.log('Failed to calculate exam results');
+				}
+			}
 			let updateResult = await updateExamAssignment(userIdParam, examIdParam, updateData);
 			if (updateResult)
 				res.status(200).send({resultStatus: 'success', data: updateResult});
@@ -268,9 +288,12 @@ router.put('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) =>
 
 const updateExamAssignment = async (userId, examId, data) => 
 {
-	const text = `UPDATE tentti_suoritus SET aloitettu=$3,suoritettu=$4,aloitusaika=$5,vastaukset=$6 WHERE kayttaja_id=$1 AND tentti_id=$2
-		RETURNING kayttaja_id AS user_id, tentti_id AS exam_id`;
-	const values = [userId, examId, data.started, data.completed, data.assignment_begin, data.answers];
+	const text = `UPDATE tentti_suoritus 
+		SET aloitettu=$3,suoritettu=$4,tarkistettu=$5,aloitusaika=$6,vastaukset=$7,pisteet=$8
+		WHERE kayttaja_id=$1 AND tentti_id=$2
+		RETURNING tentti_id AS exam_id, kayttaja_id AS user_id, aloitusaika as begin, vastaukset AS answers, pisteet AS points, 
+		voimassa AS available, suoritettu AS completed, tarkistettu AS checked, hyvaksytty AS approved, aloitettu as started`;
+	const values = [userId, examId, data.started, data.completed, data.checked, data.assignment_begin, data.answers, data.points];
 	const result = await dbConnPool().query(text, values);
 	return result.rows[0];
 }

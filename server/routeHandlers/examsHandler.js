@@ -33,8 +33,11 @@ router.get('/', verifyToken, async (req, res) =>
 //app.get('/tentti/:examId(\d+)', async (req, res) => {
 
 /**
- * Response contains exam. If the query string value of kysymykset is true,
- * the exam contains also the questions and answers without correctness information.
+ * Response contains exam.
+ * 
+ * Query string parameters:
+ * 	kysymykset=true: questions and answers are included
+ * 	oikeat=true: answers have correctness information
  */
 router.get('/:examId', verifyToken, async (req, res) => 
 {
@@ -43,13 +46,13 @@ router.get('/:examId', verifyToken, async (req, res) =>
     res.status(400).send('Invalid http requets parameter');
     return;
   }
-	//const includeCorrectness = req.query.oikeat && await userInRole(req.decodedToken, roles.roles().admin);
+	const includeCorrectness = req.query.oikeat === 'true' && await userInRole(req.decodedToken, roles.roles().admin);
 	const includeQuestionsAndAnswers = (req.query.kysymykset === 'true');
 	const examIdNr = new Number(examIdParam);
   try {
 		let exam;
 		if (includeQuestionsAndAnswers) {
-			exam = await fetchExamIncludingAnswers(dbConnPool(), examIdNr);
+			exam = await fetchExamIncludingAnswers(dbConnPool(), examIdNr, includeCorrectness);
 		}
 		else {
     	exam = await fetchExam(dbConnPool(), examIdNr);

@@ -1,13 +1,13 @@
 
 import EditExam from './EditExam';
-import { addExam, removeExam, fetchQuestionsForExam } from '../dataFunctions/examDataFunctions';
+import * as examService from '../dataFunctions/examDataFunctions';
 
 const ExamList = (props) =>
 {
 	async function handleAddExamClicked()
 	{
 		try {
-			const addedExam = await addExam();
+			const addedExam = await examService.addExam();
 			props.dispatch({type: 'EXAM_ADDED', payload: addedExam});
 		}
 		catch (err) {
@@ -19,7 +19,7 @@ const ExamList = (props) =>
 	async function handleRemoveExamClicked(examId)
 	{
 		try {
-			await removeExam(examId);
+			await examService.removeExam(examId);
 			props.dispatch({type: 'EXAM_REMOVED', payload: {examId: examId}});
 		}
 		catch (err) {
@@ -31,7 +31,7 @@ const ExamList = (props) =>
 	async function handleOpenExamClicked(examId)
 	{
 		try {
-			const questionDataArray = await fetchQuestionsForExam(examId);
+			const questionDataArray = await examService.fetchQuestionsForExam(examId);
 			props.dispatch({type: 'ACTIVE_EXAM_CHANGED', 
 				payload: {examId: examId, questionDataArray: questionDataArray} });
 		}
@@ -46,6 +46,22 @@ const ExamList = (props) =>
 	async function handleCloneExamClicked(examId)
 	{
 		//TODO
+	}
+
+	async function handleAssignToExamClicked(examId, userId)
+	{
+		try {
+			let result = await examService.assignUserToExam(examId, userId);
+			if (result.resultStatus === 'success') {
+				props.dispatch({type: 'USER_ASSIGNED_TO_EXAM', payload: {examId: examId, userId: userId}});
+			}
+			else {
+				//Currently everything else is error and catched
+			}
+		}
+		catch (err) {
+			props.dispatch({type: 'FAILED_TO_UPDATE_DATA', payload: err});
+		}
 	}
 
 	function handleBeginExamAssignmentClicked(examId)
@@ -65,7 +81,10 @@ const ExamList = (props) =>
 							{props.admin && <button type='button' onClick={(event) => handleOpenExamClicked(item.id)}>Avaa</button>}
 							{props.admin && <button type='button' onClick={(event) => handleCloneExamClicked(item.id)}>Kloonaa</button>}
 							{props.admin && <button type='button' onClick={(event) => handleRemoveExamClicked(item.id)}>Poista</button>}
-							{!props.admin && <button type='button' onClick={(event) => handleBeginExamAssignmentClicked(item.id)}>Aloita</button>}
+							{!props.admin && <>
+								<button type='button' onClick={(event) => handleAssignToExamClicked(item.id, props.userId)}>Ilmoittaudu</button>
+								<button type='button' onClick={(event) => handleBeginExamAssignmentClicked(item.id)}>Aloita</button></>
+							}
 						</div>
 					)
 					})}
