@@ -33,15 +33,15 @@ app.use('/tenttisuoritukset', examAssignmentsHandler);
 app.use('/kayttajat', usersHandler);
 app.use('/', rootHandler);
 
-https.createServer(
+/*https.createServer(
 	{
 		key: fs.readFileSync('./server/key.pem'),
 		cert: fs.readFileSync('./server/cert.pem')
 	},
 	app).listen(port, () => {
   	console.log(`Listening on port ${port}`)
-	});
+	});*/
 
-/*app.listen(port, () => {
+app.listen(port, () => {
   console.log(`Listening on port ${port}`);
-});*/
+});

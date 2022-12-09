@@ -35,7 +35,7 @@ const initialState =
 {
   user: {},
   exams: [],
-	//activeExam: undefined,
+	assignments: [],
 	questionDataArray: undefined, //question data for selected exam, no answers
   selectedExamIndex: -1,
 	examEvent: initialStateExamEvent,
@@ -50,6 +50,7 @@ const initialState =
 	showError: false,
 	showExamList: false,
 	showExam: false,
+	showAssignments: false,
 	errorMessage: ''
 };
 
@@ -173,12 +174,24 @@ const AdminApp = () =>
 		dispatch({type: 'SHOW_EXAM_LIST_REQUESTED'});
 	}
 
+	async function handleShowAssignmentsClicked()
+	{
+		try {
+			let result = await examService.fetchExamAssignments(examsState.user.userId);
+			dispatch({type: 'SHOW_ASSIGNMENTS_REQUESTED', payload: result.data});
+		}
+		catch (err) {
+			dispatch({type: 'FAILED_TO_FETCH_DATA', payload: err});
+		}
+	}
+
 	/************************************************
 	 * Event handlers for reducer
 	 */
 
 	function handleUserAssignedToExam(state, payload)
 	{
+		//TODO
 		return {...state};
 	}
 
@@ -491,8 +504,13 @@ const AdminApp = () =>
 
 			case 'SHOW_EXAM_LIST_REQUESTED':
 				console.log('SHOW_EXAM_LIST_REQUESTED');
-				return {...state, selectedExamIndex: -1,  showExamList: true, showExam: false};
-				
+				return {...state, selectedExamIndex: -1, showExamList: true, showExam: false};
+			
+			case 'SHOW_ASSIGNMENTS_REQUESTED':
+				console.log('SHOW_ASSIGNMENTS_REQUESTED');
+				return {...state, assignments: action.payload, selectedExamIndex: -1, showAssignments: true, showExam: false, 
+					showExamList: false, showError: false, errorMessage: ''};
+
 			case 'REGISTRATION_COMPLETED':
 				console.log('REGISTRATION_COMPLETED');
 				const userId = action.payload.data.userId;
@@ -575,7 +593,7 @@ const AdminApp = () =>
 
       {examsState.loggedIn && examsState.showExamList && 
 				<ExamList exams={examsState.exams} admin={examsState.user?.admin} userId={examsState.user.userId} dispatch={dispatch} 
-					handleShowExamListClicked={handleShowExamListClicked}/>}
+					handleShowExamListClicked={handleShowExamListClicked} handleShowAssignmentsClicked={handleShowAssignmentsClicked}/>}
       
 			{examsState.loggedIn && examsState.selectedExamIndex !== -1 && examsState.showExam && 
 				(<>

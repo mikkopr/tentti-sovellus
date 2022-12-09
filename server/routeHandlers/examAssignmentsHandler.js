@@ -38,7 +38,11 @@ const ResultCodes =
  });
 
 /**
- * Returns the assingments of the user
+ * Response contains the assingments of the user.
+ * Without parameters includes only uncompleted and available currently or in the future.
+ * 
+ * Query string parameters:
+ * 	suoritetut=true: Includes only completed assignments
  */
 router.get('/kayttaja/:userId', verifyToken, async (req, res) => 
 {
@@ -47,16 +51,37 @@ router.get('/kayttaja/:userId', verifyToken, async (req, res) =>
 		res.status(400).send('Invalid http requets parameter');
 		return;
 	}
+	const queryCompletedAssignments = req.query.menneet === 'true';
 	try {
 		//Admin role required to view other users' assignments
 		if (userIdParam != req.decodedToken.userId && !(await userInRole(req.decodedToken, roles.roles().admin))) {
 			res.status(403).send('Ei käyttöoikeutta');
 			return;
 		}
-			const result = await dbConnPool().query(
-				"SELECT * FROM tentti_suoritus WHERE kayttaja_id=$1", [userIdParam]);
-			res.status(200).send(result.rows[0]);
+		let timestampResult = await dbConnPool().query("SELECT current_timestamp(0)");
+		const timestamp = timestampResult.rows[0]?.current_timestamp;
+		const currDate = new Date(timestamp);
+		
+		let text;
+		if (queryCompletedAssignments) {
+			text = `
+				SELECT tentti_suoritus.tentti_id as exam_id, tentti_suoritus.kayttaja_id AS user_id
+				FROM tentti_suoritus 
+				INNER JOIN tentti ON tentti.id = tentti_suoritus.tentti_id
+				WHERE tentti_suoritus.kayttaja_id = $1 AND tentti_suoritus.suoritettu = true`;
 		}
+		else {
+			text = `
+				SELECT tentti_suoritus.tentti_id as exam_id, tentti_suoritus.kayttaja_id AS user_id
+				FROM tentti_suoritus 
+				INNER JOIN tentti ON tentti.id = tentti_suoritus.tentti_id
+				WHERE tentti_suoritus.kayttaja_id = $1
+				AND tentti_suoritus.suoritettu = false AND (tentti.alkuaika >= $2 OR tentti.alkuaika < $2 AND tentti.loppuaika > $2)`;
+		}
+
+		let result = await dbConnPool().query(text, [userIdParam, currDate]);
+		res.status(200).send({resultStatus: 'success', data: result.rows});
+	}
 	catch (err) {
 		res.status(500).send('ERROR: Server failed to process the request');
     console.log('ERROR: ', err.message);

@@ -57,6 +57,30 @@ const fetchExamAssignment = async (examId, userId) =>
 }
 
 /**
+ * Returns uncompleted exam assignments that are available now or in the future for given user.
+ * 
+ * @Param completed	If true returns only completed assignments
+ * 
+ * Returns {resultStatus: , data: }
+ * 
+ * Throws AxiosError
+ */
+ const fetchExamAssignments = async (examId, userId, completed) =>
+ {
+	 try {
+		let queryString = `http://localhost:8080/tenttisuoritukset/kayttaja/${userId}`;
+		if (completed) {
+			queryString += `?suoritetut=true`;
+		}
+		 let fetchResult = await axios.get(`http://localhost:8080/tenttisuoritukset/kayttaja/${userId}`, axiosConfig.getConfig());
+		 return fetchResult.data;
+	 }
+	 catch (err) {
+		 throw err;
+	 }
+ }
+
+/**
  * Assigns user to the exam if not already assigned.
  */
 const assignUserToExam = async (examId, userId) =>
@@ -241,5 +265,5 @@ const updateQuestionDataForExam = async (examId, questionId, number, points) =>
 	}
 }
 
-export {fetchExams, fetchExam, fetchExamAssignment, assignUserToExam, addExam, removeExam, updateExamAssignment, fetchQuestionAndAnswers, fetchQuestionsForExam, fetchQuestionsAndAnswersForExam, updateExam, 
+export {fetchExams, fetchExam, fetchExamAssignment, fetchExamAssignments, assignUserToExam, addExam, removeExam, updateExamAssignment, fetchQuestionAndAnswers, fetchQuestionsForExam, fetchQuestionsAndAnswersForExam, updateExam, 
 	addNewQuestionToExam, updateQuestion, updateQuestionDataForExam, removeQuestionFromExam};

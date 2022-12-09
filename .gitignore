@@ -22,6 +22,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-server/dbConnConfig.js
-server/key.pem
-server/cert.pem
+dbConnConfig.js
+key.pem
+cert.pem
