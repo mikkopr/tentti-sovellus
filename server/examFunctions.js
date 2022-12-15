@@ -81,7 +81,11 @@ const fetchExamIncludingAnswers = async (pool, id, includeCorrectness) =>
 }
 
 
-//NOTE column names in result are uncapitalized even when defined othewise in AS
+/**
+ * Returns exams without questions and answers
+ * 
+ * NOTE column names in result are lowercase even when AS is used
+ */
 const fetchExams = async (pool) =>
 {
   const text = "SELECT id, nimi AS name, kuvaus AS description, alkuaika AS begin, loppuaika AS end, tekoaika_mins AS available_time FROM tentti ORDER BY nimi ASC";

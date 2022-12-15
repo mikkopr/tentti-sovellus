@@ -13,6 +13,7 @@ import Registration from '../Registration';
 import ErrorMessage from '../ErrorMessage'
 import QuestionList from './QuestionList';
 import ExamList from './ExamList';
+import Assignments from '../Assignments';
 import Toolbar from './Toolbar';
 import ExamEvent from '../ExamEvent';
 
@@ -34,8 +35,8 @@ const initialStateExamEvent = {
 const initialState = 
 {
   user: {},
-  exams: [],
-	assignments: [],
+  exams: [], //Exams without questions and answers
+	examAssignments: [],
 	questionDataArray: undefined, //question data for selected exam, no answers
   selectedExamIndex: -1,
 	examEvent: initialStateExamEvent,
@@ -51,6 +52,7 @@ const initialState =
 	showExamList: false,
 	showExam: false,
 	showAssignments: false,
+	showCompletedAssignment: false, //Determines if completed assignments are shown when assignments are shown
 	errorMessage: ''
 };
 
@@ -167,23 +169,27 @@ const AdminApp = () =>
 	/************************************************
 	 * Event handlers
 	 */
-
+	
 	function handleShowExamListClicked()
 	{
 		console.log('handleShowExamListClicked()');
 		dispatch({type: 'SHOW_EXAM_LIST_REQUESTED'});
 	}
 
-	async function handleShowAssignmentsClicked()
+	/**
+	 * @param showCompleted If true shows only completed assignments
+	 */
+	async function handleShowAssignmentsClicked(showCompletedAssignments)
 	{
 		try {
-			let result = await examService.fetchExamAssignments(examsState.user.userId);
-			dispatch({type: 'SHOW_ASSIGNMENTS_REQUESTED', payload: result.data});
+			let result = await examService.fetchExamAssignments(examsState.user.userId, showCompletedAssignments);
+			dispatch({type: 'SHOW_ASSIGNMENTS_REQUESTED', payload: {assignments: result.data, showCompletedAssignments: showCompletedAssignments}});
 		}
 		catch (err) {
 			dispatch({type: 'FAILED_TO_FETCH_DATA', payload: err});
 		}
 	}
+	
 
 	/************************************************
 	 * Event handlers for reducer
@@ -195,10 +201,17 @@ const AdminApp = () =>
 		return {...state};
 	}
 
+	function handleAssignmentCanceled(state, payload)
+	{
+		const assignmentIndex = state.examAssignments.findIndex(item => item.exam_id === payload.assignment.exam_id);
+		const modifiedAssignments = state.examAssignments.slice(0, assignmentIndex).concat(state.examAssignments.slice(assignmentIndex + 1, -1));
+		return {...state, examAssignments: modifiedAssignments};
+	}
+
 	function handleActiveExamChanged(state, payload)
 	{
 		console.log('handleActiveExamChanged(...)');
-		const stateCopy = {...state, exams: [...state.exams], showExamList: false, showExam: true};
+		const stateCopy = {...state, exams: [...state.exams], showExamList: false, showExam: true, showAssignments: false};
 		const examId = payload.examId;
 		stateCopy.selectedExamIndex = stateCopy.exams.findIndex( (item) => item.id == examId );
 		stateCopy.questionDataArray = [...payload.questionDataArray];
@@ -287,9 +300,9 @@ const AdminApp = () =>
 		alert(errorMessageToUser); //TODO remove
 		return {...state, failedToSave: true, showError: true, errorMessage: errorMessageToUser};
 	}
-
+	
 	/**
-		* Handlers for exam event
+		* Event handlers for exam event
 		*/
 	
 	function handleExamEventBeginRequested(state, payload)
@@ -386,6 +399,10 @@ const AdminApp = () =>
 		return {...state, examEvent: {...state.examEvent, saveRequested: false}, showError: true, errorMessage: errorMessageToUser};
 	}
 
+	/***************************************************
+	 * Reducer
+	 */
+
   function reducer(state, action)
   {
     let stateCopy = {...state, exams: [...state.exams]};
@@ -395,6 +412,10 @@ const AdminApp = () =>
 			case 'USER_ASSIGNED_TO_EXAM':
 				console.log('USER_ASSIGNED_TO_EXAM');
 				return handleUserAssignedToExam(state, action.payload);
+
+			case 'ASSIGNMENT_CANCELED':
+				console.log('ASSIGNMENT_CANCELED');
+				return handleAssignmentCanceled(state, action.payload);
 
 			case 'ACTIVE_EXAM_CHANGED':
 				console.log('ACTIVE_EXAM_CHANGED');
@@ -442,6 +463,13 @@ const AdminApp = () =>
 				stateCopy.showExamList = true;
         return stateCopy;
       }
+
+			case 'OPERATION_NOT_PERMITTED':
+				console.log('OPERATION_NOT_PERMITTED');
+				
+				//TODO
+				
+				return {...state};
 
       case 'FAILED_TO_FETCH_DATA':
         console.log('FAILED_TO_FETCH_DATA: ' + action.payload.message);
@@ -504,12 +532,12 @@ const AdminApp = () =>
 
 			case 'SHOW_EXAM_LIST_REQUESTED':
 				console.log('SHOW_EXAM_LIST_REQUESTED');
-				return {...state, selectedExamIndex: -1, showExamList: true, showExam: false};
+				return {...state, selectedExamIndex: -1, showExamList: true, showExam: false, showAssignments: false};
 			
 			case 'SHOW_ASSIGNMENTS_REQUESTED':
 				console.log('SHOW_ASSIGNMENTS_REQUESTED');
-				return {...state, assignments: action.payload, selectedExamIndex: -1, showAssignments: true, showExam: false, 
-					showExamList: false, showError: false, errorMessage: ''};
+				return {...state, examAssignments: action.payload.assignments, showAssignments: true, showCompletedAssignments: action.payload.showCompletedAssignments, 
+					selectedExamIndex: -1, showExam: false, showExamList: false, showError: false, errorMessage: ''};
 
 			case 'REGISTRATION_COMPLETED':
 				console.log('REGISTRATION_COMPLETED');
@@ -582,26 +610,31 @@ const AdminApp = () =>
 
   return (
     <div className='App'>
-      <Navbar loggedIn={examsState.loggedIn} admin={examsState.user?.admin} dispatch={dispatch}/>
+      <Navbar loggedIn={examsState.loggedIn} admin={examsState.user?.admin} dispatch={dispatch} handleShowAssignmentsClicked={handleShowAssignmentsClicked}/>
+			
 			{examsState.loggedIn && <Toolbar showExamTools={examsState.showExam} showExamListTools={examsState.showExamList} admin={examsState.user?.admin} dispatch={dispatch}/>}
 
 			{examsState.showError && <ErrorMessage message={examsState.errorMessage} dispatch={dispatch}/>}
 
 			{!examsState.loggedIn && examsState.loginRequested && <p>Kirjaudutaan...</p>}
+			
 			{examsState.showRegister && <Registration dispatch={dispatch} duplicate={examsState.duplicateEmail}/>}
 			{examsState.showLogin && <Login dispatch={dispatch}/>}
 
       {examsState.loggedIn && examsState.showExamList && 
 				<ExamList exams={examsState.exams} admin={examsState.user?.admin} userId={examsState.user.userId} dispatch={dispatch} 
-					handleShowExamListClicked={handleShowExamListClicked} handleShowAssignmentsClicked={handleShowAssignmentsClicked}/>}
+					handleShowExamListClicked={handleShowExamListClicked}/>}
       
-			{examsState.loggedIn && examsState.selectedExamIndex !== -1 && examsState.showExam && 
-				(<>
+			{examsState.loggedIn && examsState.showAssignments &&
+				<Assignments assignments={examsState.examAssignments} exams={examsState.exams} showCompleted={examsState.showCompletedAssignments} dispatch={dispatch}/>}
+
+			{examsState.loggedIn && examsState.showExam && examsState.selectedExamIndex !== -1 && 
+				<>
 					<EditExam key={examsState.exams[examsState.selectedExamIndex].id} 
 						exam={examsState.exams[examsState.selectedExamIndex]} dispatch={dispatch}/>
 					<QuestionList examId={examsState.exams[examsState.selectedExamIndex].id} 
 						questionDataArray={examsState.questionDataArray} dispatch={dispatch}/>
-				</>)}
+				</>}
 			
 			{examsState.loggedIn && examsState.examEvent.underway && <ExamEvent examEvent={examsState.examEvent} dispatch={dispatch}/>}
       

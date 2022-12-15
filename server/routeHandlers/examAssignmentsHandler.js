@@ -17,7 +17,8 @@ const ResultCodes =
 	examAvailableTimeEnded: 1602,
 	examNotStarted: 1603,
 	examCompleted: 1604,
-	userNotAssignedToExam: 1605
+	userNotAssignedToExam: 1605,
+	notAllowedToDeleteAssignment: 1606
 }
 
 /**
@@ -38,8 +39,10 @@ const ResultCodes =
  });
 
 /**
- * Response contains the assingments of the user.
+ * Response data is an array of assingments of the user. Empty array if no assignments found.
  * Without parameters includes only uncompleted and available currently or in the future.
+ * 
+ * Response: {resultStatus: , data: }
  * 
  * Query string parameters:
  * 	suoritetut=true: Includes only completed assignments
@@ -51,7 +54,7 @@ router.get('/kayttaja/:userId', verifyToken, async (req, res) =>
 		res.status(400).send('Invalid http requets parameter');
 		return;
 	}
-	const queryCompletedAssignments = req.query.menneet === 'true';
+	const queryCompletedAssignments = req.query.suoritetut === 'true';
 	try {
 		//Admin role required to view other users' assignments
 		if (userIdParam != req.decodedToken.userId && !(await userInRole(req.decodedToken, roles.roles().admin))) {
@@ -62,24 +65,26 @@ router.get('/kayttaja/:userId', verifyToken, async (req, res) =>
 		const timestamp = timestampResult.rows[0]?.current_timestamp;
 		const currDate = new Date(timestamp);
 		
-		let text;
+		let values = [userIdParam];
+		let text =
+			`SELECT tentti_suoritus.tentti_id as exam_id, tentti_suoritus.kayttaja_id AS user_id, 
+				tentti_suoritus.aloitusaika as begin, tentti_suoritus.vastaukset AS answers, tentti_suoritus. pisteet AS points, 
+				tentti_suoritus.voimassa AS available, tentti_suoritus.suoritettu AS completed, 
+				tentti_suoritus.tarkistettu AS checked, tentti_suoritus.hyvaksytty AS approved, tentti_suoritus.aloitettu as started
+			FROM tentti_suoritus 
+			INNER JOIN tentti ON tentti.id = tentti_suoritus.tentti_id
+			WHERE tentti_suoritus.kayttaja_id = $1`
+
 		if (queryCompletedAssignments) {
-			text = `
-				SELECT tentti_suoritus.tentti_id as exam_id, tentti_suoritus.kayttaja_id AS user_id
-				FROM tentti_suoritus 
-				INNER JOIN tentti ON tentti.id = tentti_suoritus.tentti_id
-				WHERE tentti_suoritus.kayttaja_id = $1 AND tentti_suoritus.suoritettu = true`;
+			text += ` AND tentti_suoritus.suoritettu = true`;
 		}
 		else {
-			text = `
-				SELECT tentti_suoritus.tentti_id as exam_id, tentti_suoritus.kayttaja_id AS user_id
-				FROM tentti_suoritus 
-				INNER JOIN tentti ON tentti.id = tentti_suoritus.tentti_id
-				WHERE tentti_suoritus.kayttaja_id = $1
-				AND tentti_suoritus.suoritettu = false AND (tentti.alkuaika >= $2 OR tentti.alkuaika < $2 AND tentti.loppuaika > $2)`;
+			text += ` AND tentti_suoritus.suoritettu = false AND (tentti.alkuaika >= $2 OR tentti.alkuaika < $2 
+				AND tentti.loppuaika > $2)`;
+			values.push(currDate);
 		}
 
-		let result = await dbConnPool().query(text, [userIdParam, currDate]);
+		let result = await dbConnPool().query(text, values);
 		res.status(200).send({resultStatus: 'success', data: result.rows});
 	}
 	catch (err) {
@@ -292,6 +297,8 @@ router.put('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) =>
 					//Answer: because await was missing
 					updateData.points = await calculateExamResults(dbConnPool(), examIdParam, data.answers.answers);
 					updateData.checked = true;
+					
+					//TODO Simple sollution for max points is to calculate them here and save in a tentti_suoritukset table
 				}
 				catch (err) {
 					console.log('Failed to calculate exam results');
@@ -311,6 +318,73 @@ router.put('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) =>
 	}
 });
 
+/**
+ * Deletes the assingment of the user.
+ * 
+ * Response:
+ * 	If assignment deleted: {resultStatus: 'success'}
+ *  If delete not allowed due to the state of the assignment data: {resultstatus: 'failure', resultCode: , message: }
+ * 	Status code is 200
+ * 
+ * 	Otherwise responds using status codes: 400, 401, 500
+ * 
+ */
+router.delete('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) => 
+{
+	const userIdParam = validateReqParamId(req.params.userId);
+	const examIdParam = validateReqParamId(req.params.examId);
+	if (userIdParam === undefined || examIdParam === undefined) {
+		res.status(400).send('Invalid http requets parameter');
+		return;
+	}
+	let inAdminRole
+	try {
+		inAdminRole = await userInRole(req.decodedToken, roles.roles().admin);
+	}
+	catch (err) {
+		res.status(500).send('ERROR: Server failed to verify role');
+		console.log('ERROR: Server failed to verify role: ', err.message);
+		return;
+	}
+	//Admin role required to delete other users' assignments
+	if (userIdParam != req.decodedToken.userId && !inAdminRole) {
+		res.status(403).send('No permissions');
+		return;
+	}
+	try {
+		//Admin is allowed to delete assignments uncoditionally
+		if (inAdminRole) {
+			const text = "DELETE FROM tentti_suoritus WHERE kayttaja_id=$1 AND tentti_id=$2";
+			const values = [userIdParam, examIdParam];
+			await dbConnPool().query(text, values);
+			res.status(200).send({resultStatus:'success'});
+		}
+		else {
+			//User can delete an assignment if it's not started yet and the current datetime < exam's begin datetime 			
+			let text = 
+				`SELECT tentti_suoritus.aloitettu AS assignment_started, tentti.alkuaika AS exam_begin
+				FROM tentti_suoritus
+				INNER JOIN tentti ON tentti.id = tentti_suoritus.tentti_id
+				WHERE tentti_suoritus.kayttaja_id=$1 AND tentti_suoritus.tentti_id=$2 
+				AND NOT tentti_suoritus.aloitettu AND current_timestamp(0) < tentti.alkuaika`;
+			let values = [userIdParam, examIdParam];
+			let result = await dbConnPool().query(text, values);
+			if (result.rowCount === 0) {
+				res.status(200).send({resultStatus:'failure', resultCode: ResultCodes.notAllowedToDeleteAssignment});
+				return;
+			}
+			text = `DELETE FROM tentti_suoritus WHERE kayttaja_id=$1 AND tentti_id=$2`;
+			await dbConnPool().query(text, values);
+			res.status(200).send({resultStatus:'success'});
+		}
+	}
+	catch (err) {
+		res.status(500).send('ERROR: ' + err.message);
+    console.log('ERROR: ', err);
+    return;
+	}
+});
+
 const updateExamAssignment = async (userId, examId, data) => 
 {
 	const text = `UPDATE tentti_suoritus 
@@ -322,30 +396,6 @@ const updateExamAssignment = async (userId, examId, data) =>
 	const result = await dbConnPool().query(text, values);
 	return result.rows[0];
 }
-
-/**
- * Deletes the assingment of the user
- */
-router.delete('/kayttaja/:userId/tentti/:examId', verifyToken, verifyAdminRole, async (req, res) => 
-{
-	const userIdParam = validateReqParamId(req.params.userId);
-	const examIdParam = validateReqParamId(req.params.examId);
-	if (userIdParam === undefined || examIdParam === undefined) {
-		res.status(400).send('Invalid http requets parameter');
-		return;
-	}
-	try {
-		const text = "DELETE FROM tentti_suoritus WHERE kayttaja_id=$1 AND tentti_id=$2";
-    const values = [userIdParam, examIdParam];
-    await dbConnPool().query(text, values);
-		res.status(204).end();
-	}
-	catch (err) {
-		res.status(500).send('ERROR: ' + err.message);
-    console.log('ERROR: ', err);
-    return;
-	}
-});
 
 /*
 ...

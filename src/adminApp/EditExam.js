@@ -1,8 +1,10 @@
 
 import '../App.css';
 
-import {updateExam} from '../dataFunctions/examDataFunctions';
 import { useEffect, useState } from 'react';
+
+import {updateExam} from '../dataFunctions/examDataFunctions';
+import * as dateUtils from '../utils/dateUtils'
 
 const MAX_VALUE_SMALL_INT = 32768;
 
@@ -94,8 +96,8 @@ const EditExam = (props) =>
 		return {modified: false, invalidBeginDate: false, invalidBeginTime: false,
 			invalidEndDate: false, invalidEndTime: false, invalidAvailableTime: false,
 			name: currentProps.exam.name, description: currentProps.exam.description,
-			beginDate: dateStringFromIsoString(currentProps.exam.begin), beginTime: timeStringFromIsoString(currentProps.exam.begin),
-			endDate: dateStringFromIsoString(currentProps.exam.end), endTime: timeStringFromIsoString(currentProps.exam.end),
+			beginDate: dateUtils.dateStringFromIsoString(currentProps.exam.begin), beginTime: dateUtils.timeStringFromIsoString(currentProps.exam.begin),
+			endDate: dateUtils.dateStringFromIsoString(currentProps.exam.end), endTime: dateUtils.timeStringFromIsoString(currentProps.exam.end),
 			available_time: currentProps.exam.available_time};
 	}
 
@@ -160,23 +162,34 @@ const EditExam = (props) =>
 		<div className='exam'>
 			<h3>{props.exam.name}</h3>
 			<div className='background-color-aqua'>
+				
 				<label htmlFor='name'>Nimi:</label>
 				<input type='text' id='name' value={modifiedState.modified ? modifiedState.name : props.exam.name}
 					onChange={(event) => handleExamNameChanged(event.target.value)}/>
+				
 				<label htmlFor='begin'>Alkuaika:</label>
-				<input type='date' id='beginDate' className={modifiedState.invalidBeginDate ? 'invalid-input' : ''} value={modifiedState.modified ? modifiedState.beginDate : dateStringFromIsoString(props.exam.begin)}
+				<input type='date' id='beginDate' className={modifiedState.invalidBeginDate ? 'invalid-input' : ''}
+					value={modifiedState.modified ? modifiedState.beginDate : dateUtils.dateStringFromIsoString(props.exam.begin)}
 					onChange={(event) => handleExamBeginChanged(event.target.value)}/>
+				
 				<input className={modifiedState.invalidBeginTime ? 'invalid-input' : ''} type='text' id='beginTime'
-					value={modifiedState.modified ? modifiedState.beginTime : timeStringFromIsoString(props.exam.begin)}
+					value={modifiedState.modified ? modifiedState.beginTime : dateUtils.timeStringFromIsoString(props.exam.begin)}
 					onChange={(event) => handleExamBeginTimeChanged(event.target.value)}/>
+				
 				<label htmlFor='end'>Loppuaika:</label>
-				<input type='date' id='end' className={modifiedState.invalidEndDate ? 'invalid-input' : ''} value={modifiedState.modified ? modifiedState.endDate : dateStringFromIsoString(props.exam.end)}
-						onChange={(event) => handleExamEndChanged(event.target.value)}/>
-				<input type='text' id='endTime' className={modifiedState.invalidEndTime ? 'invalid-input' : ''} value={modifiedState.modified ? modifiedState.endTime : timeStringFromIsoString(props.exam.end)}
-						onChange={(event) => handleExamEndTimeChanged(event.target.value)}/>
+				<input type='date' id='end' className={modifiedState.invalidEndDate ? 'invalid-input' : ''} 
+					value={modifiedState.modified ? modifiedState.endDate : dateUtils.dateStringFromIsoString(props.exam.end)}
+					onChange={(event) => handleExamEndChanged(event.target.value)}/>
+				
+				<input type='text' id='endTime' className={modifiedState.invalidEndTime ? 'invalid-input' : ''} 
+					value={modifiedState.modified ? modifiedState.endTime : dateUtils.timeStringFromIsoString(props.exam.end)}
+					onChange={(event) => handleExamEndTimeChanged(event.target.value)}/>
+				
 				<label htmlFor='availableTime'>Tekoaika (min):</label>
-				<input type='text' id='availableTime' className={modifiedState.invalidAvailableTime ? 'invalid-input' : ''} value={modifiedState.modified ? modifiedState.available_time : props.exam.available_time}
-						onChange={(event) => handleExamAvailableTimeChanged(event.target.value)}/>
+				<input type='text' id='availableTime' className={modifiedState.invalidAvailableTime ? 'invalid-input' : ''} 
+					value={modifiedState.modified ? modifiedState.available_time : props.exam.available_time}
+					onChange={(event) => handleExamAvailableTimeChanged(event.target.value)}/>
+				
 				{modifiedState.modified && inputsValid() && <button type='button' onClick={() => handleUpdateDataClicked()}>Save</button>}
 				{modifiedState.modified && !inputsValid() && <button type='button' disabled onClick={() => handleUpdateDataClicked()}>Save</button>}
 			</div>
@@ -231,69 +244,4 @@ function dateValid(value)
 	return result;
  }
 
-/**
- * Returns the date part of the date iso string
- * 
- * If the argument is undefined or null or doesn't contain dddd-dd-dd returns an empty string
- */
-function dateStringFromIsoString(isoString)
-{
-	if (!isoString || typeof isoString !== 'string')
-		return '';
-	let match = isoString.match(/\d{4}-\d{2}-\d{2}/);
-	return match ? match[0] : '';
-}
-
-/**
- * Returns the hours and minutes as a string 'dd:dd' in the local time zone.
- * 
- * If the argument is undefined or null or a date object can't be created using it as an argument
- * (The argument isn't iso 8601 date string) returns an empty string.
- */
-function timeStringFromIsoString(isoString)
-{
-	if (!isoString || typeof isoString !== 'string')
-		return '';
-	//Convert the given date to the local time zone
-	let localDate = new Date(isoString);
-	if (!localDate || localDate.toString() === 'Invalid Date') {
-		return '';
-	}
-	return paddedTimeComponent(localDate.getHours()) + ':' + paddedTimeComponent(localDate.getMinutes());
-}
-
-/**
- * If the argument < 10 pads with one zero.
- */
-function paddedTimeComponent(timeComponent)
-{
-	if (timeComponent < 10)
-		return '0' + timeComponent;
-	return timeComponent;
-}
-
 export default EditExam;
-
-/*
-<div className='kysymys-lista'>
-				{props.exam.questionDataArray.map( (item) => {
-					return (
-						<div key={item.id}>
-							<EditQuestion
-								questionId={item.id}
-								dispatch={props.dispatch}
-							/>
-							<input type='button' value='-'
-								onClick={(event) => handleRemoveQuestionClicked(item.id)}
-							/>
-						</div>
-						)
-					})
-				}
-			</div>
-			<div>
-				<input type='button' value='+'
-					onClick={event => handleAddQuestionClicked(props.exam.id)}
-				/>
-			</div>
-			*/

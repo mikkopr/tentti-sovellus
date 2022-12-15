@@ -16,16 +16,16 @@ const Login = (props) =>
 	}
 
   return (
-    <div className="login">
+    <div id='login' className='login'>
 			<form onSubmit={(event) => handleSubmit(event)}>
 				<p>
-					Käyttäjänimi: <input type='text' onChange={(event) => handleUsernameChanged(event.target.value)} />
+					Käyttäjänimi: <input id='username_field' type='text' onChange={(event) => handleUsernameChanged(event.target.value)} />
 				</p>
 				<p>
-					Salasana: <input type='password' onChange={(event) => handlePasswordChanged(event.target.value)} />
+					Salasana: <input id='password_field' type='password' onChange={(event) => handlePasswordChanged(event.target.value)} />
 				</p>
 				<p>
-					<input type='submit' value='Kirjaudu'/>
+					<input id='login_button' type='submit' value='Kirjaudu'/>
 				</p>
 			</form>
     </div>
