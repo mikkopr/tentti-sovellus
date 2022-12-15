@@ -65,14 +65,14 @@ const fetchExamAssignment = async (examId, userId) =>
  * 
  * Throws AxiosError
  */
- const fetchExamAssignments = async (examId, userId, completed) =>
+ const fetchExamAssignments = async (userId, completed) =>
  {
 	 try {
-		let queryString = `http://localhost:8080/tenttisuoritukset/kayttaja/${userId}`;
+		let query = `http://localhost:8080/tenttisuoritukset/kayttaja/${userId}`;
 		if (completed) {
-			queryString += `?suoritetut=true`;
+			query += `?suoritetut=true`;
 		}
-		 let fetchResult = await axios.get(`http://localhost:8080/tenttisuoritukset/kayttaja/${userId}`, axiosConfig.getConfig());
+		 let fetchResult = await axios.get(query, axiosConfig.getConfig());
 		 return fetchResult.data;
 	 }
 	 catch (err) {
@@ -210,6 +210,22 @@ const updateExamAssignment = async (examAssignment) =>
 }
 
 /**
+ * @return {resultStatus: success/failure, data: undefined}
+ */
+const deleteExamAssignment = async (examAssignment) =>
+{
+	try {
+		let result = await axios.delete(
+			`http://localhost:8080/tenttisuoritukset/kayttaja/${examAssignment.user_id}/tentti/${examAssignment.exam_id}`,
+			axiosConfig.getConfig());
+		return result.data;
+	}
+	catch (err) {
+		throw err;
+	}
+}
+
+/**
  * Returns the created question id, text, number and points if succesful.
  */
 const addNewQuestionToExam = async (examId) =>
@@ -265,5 +281,6 @@ const updateQuestionDataForExam = async (examId, questionId, number, points) =>
 	}
 }
 
-export {fetchExams, fetchExam, fetchExamAssignment, fetchExamAssignments, assignUserToExam, addExam, removeExam, updateExamAssignment, fetchQuestionAndAnswers, fetchQuestionsForExam, fetchQuestionsAndAnswersForExam, updateExam, 
+export {fetchExams, fetchExam, fetchExamAssignment, fetchExamAssignments, assignUserToExam, addExam, removeExam,
+	updateExamAssignment, deleteExamAssignment, fetchQuestionAndAnswers, fetchQuestionsForExam, fetchQuestionsAndAnswersForExam, updateExam, 
 	addNewQuestionToExam, updateQuestion, updateQuestionDataForExam, removeQuestionFromExam};
