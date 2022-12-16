@@ -3,10 +3,16 @@ const {fetchExamIncludingAnswers} = require('./examFunctions');
 
 /**
  * Insert a new row to tentti_suoritus table.
- * Returns one if new row was inserted or throws an error.
+ * 
+ * @return One if a new row was inserted, zero if not.
+ * 
+ * @throw DatabaseError if the insertion fails
+ * @throw Error TODO Check if all DatabaseErrors
  */
 const assignUserToExam = async (pool, userId, examId) =>
 {
+	//TODO Don't add if the exam or assignment has already started
+
   const text = "INSERT INTO tentti_suoritus (kayttaja_id, tentti_id) VALUES ($1, $2)";
   const values = [userId, examId];
   const result = await pool.query(text, values);
