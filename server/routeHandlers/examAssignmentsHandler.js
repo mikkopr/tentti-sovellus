@@ -18,7 +18,8 @@ const ResultCodes =
 	examNotStarted: 1603,
 	examCompleted: 1604,
 	userNotAssignedToExam: 1605,
-	notAllowedToDeleteAssignment: 1606
+	assignmentToExamNotAllowed: 1606,
+	notAllowedToDeleteAssignment: 1607
 }
 
 /**
@@ -139,8 +140,16 @@ router.get('/tentti/:examId', verifyToken, verifyAdminRole, async (req, res) =>
 /**
  * Assingns the user to the exam.
  * 
- * If the user was succesfully assigned or the user was already assigned,
- * responds with status code 200 and body: {resultStatus: 'success'}
+ * Responses:
+ *  status 200 body: {resultStatus: 'success'}
+ * 		If the user was succesfully assigned or the user was already assigned
+ * 	status 200 body: {resultStatus: 'failure', resultCode: }
+ * 		If the assignment was not permitted
+ * 
+ *  status 401 Invalid token
+ *  status 403 No permissions
+ *  statsu 400 Invalid query
+ *  status 500 Error
  */
 router.post('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) =>
 {
@@ -157,24 +166,26 @@ try {
 		return;
 	}
   const rowCount = await assignUserToExam(dbConnPool(), userIdParam, examIdParam);
-  res.status(200).send({resultStatus: 'success'});
+	if (rowCount > 0)
+  	res.status(200).send({resultStatus: 'success'});
+	else
+		res.status(200).send({resultStatus: 'failure', resultCode: ResultCodes.assignmentToExamNotAllowed});
 }
 catch (err) {
   if (err instanceof DatabaseError) {
     if (err.code == 23503) {
-      res.status(404).send('ERROR: User or exam does not exist');
-      console.log('ERROR: DatabaseError: ', err.message);
+      res.status(200).send({resultStatus: 'failure', resultCode: ResultCodes.dataNotFound});
+      console.log('DATA_NOT_FOUND: Unable to assign user to exam because required data does not exists. Error message: ', err.message);
 			return;
     }
     else if (err.code == 23505) {
-      //res.status(409).send('User is already assigned to the exam');
+      //User is already assigned to the exam
 			res.status(200).send({resultStatus: 'success'});
-      //console.log('WARNING: Tried to insert a duplicate: ', err.message);
 			return;
     }
     else {
       res.status(500).send('ERROR: Database is unable to fulfill the operation');
-      console.log('ERROR: DatabaseError', err.message);
+      console.log('ERROR: DatabaseError: ', err.message);
 			return;
     }
   }

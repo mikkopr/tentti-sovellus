@@ -37,6 +37,7 @@ const initialState =
   user: {},
   exams: [], //Exams without questions and answers
 	examAssignments: [],
+	examList: [], //ExamList component shows exams in this list. The list is kept sync with exams list
 	questionDataArray: undefined, //question data for selected exam, no answers
   selectedExamIndex: -1,
 	examEvent: initialStateExamEvent,
@@ -55,6 +56,9 @@ const initialState =
 	showCompletedAssignment: false, //Determines if completed assignments are shown when assignments are shown
 	errorMessage: ''
 };
+
+const assignmentStub = {exam_id: undefined, user_id: undefined, begin: undefined, answers: {answers:[]}, points: 0,
+	available: true, completed: false, checked: false, approved: false, started: false };
 
 //const STORAGE_KEY = 'examsData';
 //const SERVER = 'http://localhost:8081';
@@ -170,10 +174,18 @@ const AdminApp = () =>
 	 * Event handlers
 	 */
 	
-	function handleShowExamListClicked()
+	//TODO try to use reducer instead
+
+	async function handleShowExamListClicked()
 	{
 		console.log('handleShowExamListClicked()');
-		dispatch({type: 'SHOW_EXAM_LIST_REQUESTED'});
+		try {
+			let result = await examService.fetchExamAssignments(examsState.user.userId, false);
+			dispatch({type: 'SHOW_EXAM_LIST_REQUESTED', payload: {assignments: result.data}});
+		}
+		catch (err) {
+			dispatch({type: 'FAILED_TO_FETCH_DATA', payload: err});
+		}
 	}
 
 	/**
@@ -195,10 +207,88 @@ const AdminApp = () =>
 	 * Event handlers for reducer
 	 */
 
+	/* Exam list */
+
+	/**
+	 * Executed when exam list is opened. Note that state.examAssignments is updated.
+	 */
+	function handleShowExamListRequested(state, payload)
+	{
+		return {...state, examList: [...state.exams], examAssignments: [...payload.assignments], selectedExamIndex: -1, 
+			showExamList: true, showExam: false, showAssignments: false};
+	}
+
+	/**
+	 * Executed when exam list is visible and user request to show all exams
+	 */
+	function handleShowAllExamsRequested(state)
+	{
+		//TODO shows also exams that have null dates
+		return {...state, examList: [...state.exams], selectedExamIndex: -1, 
+			showExamList: true, showExam: false, showAssignments: false};
+	}
+
+	function handleShowOngoingExamsRequested(state, payload)
+	{
+		//Add the references of ongoing exams to state.examList.
+		//Its assumed that system's clock is correct
+		const currTimeMs = new Date().getTime();
+		const modifiedExamList = state.exams.reduce( (acc, exam) => {
+				if (!exam || !exam.begin || !exam.end) {
+					return acc;
+				}
+				const beginTimeMs = new Date(exam.begin).getTime();
+				const endTimeMs = new Date(exam.end).getTime();
+				if (currTimeMs >= beginTimeMs && currTimeMs < endTimeMs) {
+					acc.push(exam);
+				}
+				return acc;
+			}, []);
+			return {...state, examList: modifiedExamList};
+	}
+
+	function handleShowIncomingExamsRequested(state, payload)
+	{
+		//Add the references of incoming exams to state.examList.
+		//Its assumed that system's clock is correct
+		const currTimeMs = new Date().getTime();
+		const modifiedExamList = state.exams.reduce( (acc, exam) => {
+				if (!exam || !exam.begin || !exam.end) {
+					return acc;
+				}
+				const beginTimeMs = new Date(exam.begin).getTime();
+				const endTimeMs = new Date(exam.end).getTime();
+				if (currTimeMs < beginTimeMs) {
+					acc.push(exam);
+				}
+				return acc;
+			}, []);
+			return {...state, examList: modifiedExamList};
+	}
+
+	function handleShowPastExamsRequested(state, payload)
+	{
+		//Add the references of incoming exams to state.examList.
+		//Its assumed that system's clock is correct
+		const currTimeMs = new Date().getTime();
+		const modifiedExamList = state.exams.reduce( (acc, exam) => {
+				if (!exam || !exam.begin || !exam.end) {
+					return acc;
+				}
+				const beginTimeMs = new Date(exam.begin).getTime();
+				const endTimeMs = new Date(exam.end).getTime();
+				if (currTimeMs < beginTimeMs) {
+					acc.push(exam);
+				}
+				return acc;
+			}, []);
+			return {...state, examList: modifiedExamList};
+	}
+
 	function handleUserAssignedToExam(state, payload)
 	{
-		//TODO
-		return {...state};
+		const assignment = {...assignmentStub, user_id: payload.userId, exam_id: payload.examId};
+		return {...state, examAssignments: [...state.examAssignments, assignment]};
 	}
 
 	function handleAssignmentCanceled(state, payload)
@@ -409,6 +499,22 @@ const AdminApp = () =>
     
     switch (action.type) 
 		{ 
+			case 'EXAM_LIST_SHOW_ONGOING':
+				console.log('EXAM_LIST_SHOW_ONGOING');
+				return handleShowOngoingExamsRequested(state, action.payload);
+
+			case 'EXAM_LIST_SHOW_INCOMING':
+				console.log('EXAM_LIST_SHOW_INCOMING');
+				return handleShowIncomingExamsRequested(state);
+
+			case 'EXAM_LIST_SHOW_PAST':
+				console.log('EXAM_LIST_SHOW_PAST');
+				return handleShowPastExamsRequested(state);
+
+			case 'EXAM_LIST_SHOW_ALL':
+				console.log('EXAM_LIST_SHOW_ALL');
+				return handleShowAllExamsRequested(state);
+
 			case 'USER_ASSIGNED_TO_EXAM':
 				console.log('USER_ASSIGNED_TO_EXAM');
 				return handleUserAssignedToExam(state, action.payload);
@@ -460,7 +566,7 @@ const AdminApp = () =>
         stateCopy.selectedExamIndex = -1;
         stateCopy.user = {...state.user};
         stateCopy.loggedIn = true;
-				stateCopy.showExamList = true;
+				stateCopy.showExamList = false;
         return stateCopy;
       }
 
@@ -532,7 +638,7 @@ const AdminApp = () =>
 
 			case 'SHOW_EXAM_LIST_REQUESTED':
 				console.log('SHOW_EXAM_LIST_REQUESTED');
-				return {...state, selectedExamIndex: -1, showExamList: true, showExam: false, showAssignments: false};
+				return handleShowExamListRequested(state, action.payload);
 			
 			case 'SHOW_ASSIGNMENTS_REQUESTED':
 				console.log('SHOW_ASSIGNMENTS_REQUESTED');
@@ -610,9 +716,8 @@ const AdminApp = () =>
 
   return (
     <div className='App'>
-      <Navbar loggedIn={examsState.loggedIn} admin={examsState.user?.admin} dispatch={dispatch} handleShowAssignmentsClicked={handleShowAssignmentsClicked}/>
-			
-			{examsState.loggedIn && <Toolbar showExamTools={examsState.showExam} showExamListTools={examsState.showExamList} admin={examsState.user?.admin} dispatch={dispatch}/>}
+      <Navbar loggedIn={examsState.loggedIn} admin={examsState.user?.admin} dispatch={dispatch} 
+				handleShowExamListClicked={handleShowExamListClicked} handleShowAssignmentsClicked={handleShowAssignmentsClicked}/>
 
 			{examsState.showError && <ErrorMessage message={examsState.errorMessage} dispatch={dispatch}/>}
 
@@ -622,7 +727,7 @@ const AdminApp = () =>
 			{examsState.showLogin && <Login dispatch={dispatch}/>}
 
       {examsState.loggedIn && examsState.showExamList && 
-				<ExamList exams={examsState.exams} admin={examsState.user?.admin} userId={examsState.user.userId} dispatch={dispatch} 
+				<ExamList exams={examsState.examList} examAssignments={examsState.examAssignments} admin={examsState.user?.admin} userId={examsState.user.userId} dispatch={dispatch} 
 					handleShowExamListClicked={handleShowExamListClicked}/>}
       
 			{examsState.loggedIn && examsState.showAssignments &&
@@ -747,3 +852,5 @@ export default AdminApp;
 
 //{examsState.loggedIn && examsState.selectedExamIndex !== -1 && examsState.showExam && 
 //<QuestionList examId={examsState.exams[examsState.selectedExamIndex].id} questionDataArray={examsState.questionDataArray} dispatch={dispatch}/>}
+
+//{examsState.loggedIn && <Toolbar showExamTools={examsState.showExam} showExamListTools={examsState.showExamList} admin={examsState.user?.admin} dispatch={dispatch}/>}

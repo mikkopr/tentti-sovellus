@@ -2,8 +2,18 @@
 import EditExam from './EditExam';
 import * as examService from '../dataFunctions/examDataFunctions';
 
+/**
+ * props: {exams, examAssignments, admin, userId dispatch, handleShowExamListClicked}
+ * 
+ * TODO use dispatch instead of handleShowExamListClicked
+ */
 const ExamList = (props) =>
 {
+	function handleShowOngoingClicked()
+	{
+		props.dispatch({type: 'EXAM_LIST_SHOW_ONGOING'});
+	}
+
 	async function handleAddExamClicked()
 	{
 		try {
@@ -56,7 +66,8 @@ const ExamList = (props) =>
 				props.dispatch({type: 'USER_ASSIGNED_TO_EXAM', payload: {examId: examId, userId: userId}});
 			}
 			else {
-				//Currently everything else is error and catched
+				//TODO dispatch({type: 'OPERATION_NOT_PERMITTED', payload: {resultCode: result.resultCode}});
+				//Currently no failures in result.resultStatus
 			}
 		}
 		catch (err) {
@@ -70,21 +81,35 @@ const ExamList = (props) =>
 		props.dispatch({type: 'EXAM_EVENT_BEGIN_REQUESTED', payload: {examId: examId}})
 	}
 
+	function isUserAssignedToExam(userId, examId)
+	{
+		return props.examAssignments.find( item => item.user_id === userId && item.exam_id === examId );
+	}
+
 	return (
 		<div>
-			<button type='button' onClick={(event) => handleAddExamClicked()}>Uusi tentti</button>
+			<div className='toolbar'>
+				<button type='button' onClick={() => props.dispatch({type: 'EXAM_LIST_SHOW_ONGOING'})}>Avoimet</button>
+				<button type='button' onClick={() => props.dispatch({type: 'EXAM_LIST_SHOW_INCOMING'})}>Tulevat</button>
+				<button type='button' onClick={() => props.dispatch({type: 'EXAM_LIST_SHOW_PAST'})}>Menneet</button>
+				<button type='button' onClick={() => props.dispatch({type: 'EXAM_LIST_SHOW_ALL'})}>Kaikki</button>
+				{props.admin && <button type='button' onClick={(event) => handleAddExamClicked()}>Uusi tentti</button>}
+			</div>
 			<div>
 				{props.exams.map( (item) => {
 					return (
 						<div key={item.id}>
 							<EditExam exam={item} dispatch={props.dispatch}/>
+							
 							{props.admin && <button type='button' onClick={(event) => handleOpenExamClicked(item.id)}>Avaa</button>}
 							{props.admin && <button type='button' onClick={(event) => handleCloneExamClicked(item.id)}>Kloonaa</button>}
 							{props.admin && <button type='button' onClick={(event) => handleRemoveExamClicked(item.id)}>Poista</button>}
-							{!props.admin && <>
-								<button type='button' onClick={(event) => handleAssignToExamClicked(item.id, props.userId)}>Ilmoittaudu</button>
-								<button type='button' onClick={(event) => handleBeginExamAssignmentClicked(item.id)}>Aloita</button></>
-							}
+							
+							{!props.admin && !isUserAssignedToExam(props.userId, item.id) && 
+								<button type='button' onClick={(event) => handleAssignToExamClicked(item.id, props.userId)}>Ilmoittaudu</button>}
+						
+							{!props.admin && isUserAssignedToExam(props.userId, item.id) && 
+								<button type='button' onClick={(event) => handleBeginExamAssignmentClicked(item.id)}>Aloita</button>}
 						</div>
 					)
 					})}
@@ -94,3 +119,17 @@ const ExamList = (props) =>
 }
 
 export default ExamList;
+
+/*function examShouldBeVisible(examId)
+	{
+		if (props.showOngoing) {
+			const exam = props.exams.find(item => item.id === examId);
+			if (!exam || !exam.begin || !exam.end) {
+				return false;
+			}
+			const currTimeMs = new Date().getTime();
+			const examBeginTimeMs = new Date(exam.begin).getTime();
+			const examEndTimeMs = new Date(exam.end).getTime();
+			return currTimeMs >= examBeginTimeMs && currTimeMs <= examEndTimeMs;
+		}
+	}*/

@@ -82,6 +82,8 @@ const fetchExamAssignment = async (examId, userId) =>
 
 /**
  * Assigns user to the exam if not already assigned.
+ * 
+ * @return {resultStatus: success} if the user is assigned or was already assigned
  */
 const assignUserToExam = async (examId, userId) =>
 {
