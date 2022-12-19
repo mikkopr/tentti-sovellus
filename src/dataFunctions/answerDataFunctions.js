@@ -14,7 +14,7 @@ const fetchAnswers = async (questionId) =>
 {
 	let fetchResult = undefined;
 	try {
-		fetchResult = await axios.get(`http://localhost:8080/kysymykset/${questionId}/vastaukset`, axiosConfig.getConfig());
+		fetchResult = await axios.get(`/kysymykset/${questionId}/vastaukset`, axiosConfig.getConfig());
 	}
 	catch (err) {
 		throw err;
@@ -30,7 +30,7 @@ const addAnswer = async (questionId) =>
 	let fetchResult = undefined;
 	try {
 		const answerStub = {teksti: 'vastaus', oikein: false};
-		fetchResult = await axios.post(`http://localhost:8080/kysymykset/${questionId}/vastaus`, answerStub, axiosConfig.getConfig());
+		fetchResult = await axios.post(`/kysymykset/${questionId}/vastaus`, answerStub, axiosConfig.getConfig());
 		return fetchResult.data;
 	}
 	catch (err) {
@@ -41,7 +41,7 @@ const addAnswer = async (questionId) =>
 const deleteAnswer = async (answerId) =>
 {
 	try {
-		const fetchResult = await axios.delete(`http://localhost:8080/vastaukset/${answerId}`, axiosConfig.getConfig());
+		const fetchResult = await axios.delete(`/vastaukset/${answerId}`, axiosConfig.getConfig());
 		return fetchResult;
 	}
 	catch (err) {
@@ -54,7 +54,7 @@ const updateAnswer = async (answerId, text, correct) =>
 	let fetchResult = undefined;
 	try {
 		const answer = {text: text, correct: correct};
-		fetchResult = await axios.put(`http://localhost:8080/vastaukset/${answerId}`, answer, axiosConfig.getConfig());
+		fetchResult = await axios.put(`/vastaukset/${answerId}`, answer, axiosConfig.getConfig());
 		return fetchResult.data;
 	}
 	catch (err) {

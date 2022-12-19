@@ -15,7 +15,8 @@ import {fetchAnswers} from './answerDataFunctions';
 const fetchExams = async () =>
 {
 	try {
-		const fetchResult = await axios.get(`http://localhost:8080/tentit`, axiosConfig.getConfig());
+		const config = axiosConfig.getConfig();
+		const fetchResult = await axios.get('/tentit', axiosConfig.getConfig());
 		return fetchResult;
 	}
 	catch (err) {
@@ -31,9 +32,9 @@ const fetchExam = async (examId, includeQuestions) =>
 	try {
 		let fetchResult;
 		if (includeQuestions)
-			fetchResult = await axios.get(`http://localhost:8080/tentit/${examId}?kysymykset=true`, axiosConfig.getConfig());
+			fetchResult = await axios.get(`/tentit/${examId}?kysymykset=true`, axiosConfig.getConfig());
 		else
-		fetchResult = await axios.get(`http://localhost:8080/tentit/${examId}`, axiosConfig.getConfig());
+		fetchResult = await axios.get(`/tentit/${examId}`, axiosConfig.getConfig());
 		
 		return fetchResult;
 	}
@@ -48,7 +49,7 @@ const fetchExam = async (examId, includeQuestions) =>
 const fetchExamAssignment = async (examId, userId) =>
 {
 	try {
-		let fetchResult = await axios.get(`http://localhost:8080/tenttisuoritukset/kayttaja/${userId}/tentti/${examId}`, axiosConfig.getConfig());
+		let fetchResult = await axios.get(`/tenttisuoritukset/kayttaja/${userId}/tentti/${examId}`, axiosConfig.getConfig());
 		return fetchResult;
 	}
 	catch (err) {
@@ -68,7 +69,7 @@ const fetchExamAssignment = async (examId, userId) =>
  const fetchExamAssignments = async (userId, completed) =>
  {
 	 try {
-		let query = `http://localhost:8080/tenttisuoritukset/kayttaja/${userId}`;
+		let query = `/tenttisuoritukset/kayttaja/${userId}`;
 		if (completed) {
 			query += `?suoritetut=true`;
 		}
@@ -88,7 +89,7 @@ const fetchExamAssignment = async (examId, userId) =>
 const assignUserToExam = async (examId, userId) =>
 {
 	try {
-		let fetchResult = await axios.post(`http://localhost:8080/tenttisuoritukset/kayttaja/${userId}/tentti/${examId}`, {}, axiosConfig.getConfig());
+		let fetchResult = await axios.post(`/tenttisuoritukset/kayttaja/${userId}/tentti/${examId}`, {}, axiosConfig.getConfig());
 		return fetchResult.data;
 	}
 	catch (err) {
@@ -101,7 +102,7 @@ const addExam = async () =>
 	let fetchResult = undefined;
 	try {
 		const examStub = {name: 'Tentti', description: '', available_time: 0};
-		fetchResult = await axios.post('http://localhost:8080/tentit/', examStub, axiosConfig.getConfig());
+		fetchResult = await axios.post('/tentit/', examStub, axiosConfig.getConfig());
 	}
 	catch (err) {
 		throw err;
@@ -112,7 +113,7 @@ const addExam = async () =>
 const removeExam = async (examId) =>
 {
 	try {
-		await axios.delete(`http://localhost:8080/tentit/${examId}`, axiosConfig.getConfig());
+		await axios.delete(`/tentit/${examId}`, axiosConfig.getConfig());
 	}
 	catch (err) {
 		throw err;
@@ -123,7 +124,7 @@ const fetchQuestionAndAnswers = async (questionId) =>
 {
 	let fetchResult = undefined;
 	try {
-		fetchResult = await axios.get(`http://localhost:8080/kysymykset/${questionId}/vastaukset?oikeat=true`, axiosConfig.getConfig());
+		fetchResult = await axios.get(`/kysymykset/${questionId}/vastaukset?oikeat=true`, axiosConfig.getConfig());
 	}
 	catch (err) {
 		throw err;
@@ -175,7 +176,7 @@ const fetchQuestionsForExam = async (id) =>
 {
 	let fetchResult = undefined;
 	try {
-		fetchResult = await axios.get('http://localhost:8080/tenttikysymykset/tentti/' + id, axiosConfig.getConfig());
+		fetchResult = await axios.get('/tenttikysymykset/tentti/' + id, axiosConfig.getConfig());
 	}
 	catch (err) {
 		throw err;
@@ -190,7 +191,7 @@ const updateExam = async (exam) =>
 {
 	let fetchResult = undefined;
 	try {
-		fetchResult = await axios.put('http://localhost:8080/tentit/' + exam.id, exam, axiosConfig.getConfig());
+		fetchResult = await axios.put('/tentit/' + exam.id, exam, axiosConfig.getConfig());
 	}
 	catch (err) {
 		throw err;
@@ -202,7 +203,7 @@ const updateExamAssignment = async (examAssignment) =>
 {
 	let fetchResult = undefined;
 	try {
-		fetchResult = await axios.put(`http://localhost:8080/tenttisuoritukset/kayttaja/${examAssignment.user_id}/tentti/${examAssignment.exam_id}`,
+		fetchResult = await axios.put(`/tenttisuoritukset/kayttaja/${examAssignment.user_id}/tentti/${examAssignment.exam_id}`,
 			examAssignment, axiosConfig.getConfig());
 	}
 	catch (err) {
@@ -218,7 +219,7 @@ const deleteExamAssignment = async (examAssignment) =>
 {
 	try {
 		let result = await axios.delete(
-			`http://localhost:8080/tenttisuoritukset/kayttaja/${examAssignment.user_id}/tentti/${examAssignment.exam_id}`,
+			`/tenttisuoritukset/kayttaja/${examAssignment.user_id}/tentti/${examAssignment.exam_id}`,
 			axiosConfig.getConfig());
 		return result.data;
 	}
@@ -235,7 +236,7 @@ const addNewQuestionToExam = async (examId) =>
 	let fetchResult = undefined;
 	try {
 		const questionStub = {text: 'kysymys', number: 1, points: 0};
-		fetchResult = await axios.post(`http://localhost:8080/tenttikysymykset/tentti/${examId}/kysymys`, questionStub, axiosConfig.getConfig());
+		fetchResult = await axios.post(`/tenttikysymykset/tentti/${examId}/kysymys`, questionStub, axiosConfig.getConfig());
 	}
 	catch (err) {
 		throw err;
@@ -250,7 +251,7 @@ const removeQuestionFromExam = async (examId, questionId) =>
 {
 	let result = 0;
 	try {
-		result = await axios.delete(`http://localhost:8080/tenttikysymykset/tentti/${examId}/kysymys/${questionId}`, axiosConfig.getConfig());
+		result = await axios.delete(`/tenttikysymykset/tentti/${examId}/kysymys/${questionId}`, axiosConfig.getConfig());
 	}
 	catch (err) {
 		throw err;
@@ -262,7 +263,7 @@ const updateQuestion = async (questionId, text) =>
 {
 	let fetchResult = undefined;
 	try {
-		fetchResult = await axios.put(`http://localhost:8080/kysymykset/${questionId}`, {text: text} , axiosConfig.getConfig());
+		fetchResult = await axios.put(`/kysymykset/${questionId}`, {text: text} , axiosConfig.getConfig());
 		return fetchResult.data;
 	}
 	catch (err) {
@@ -274,7 +275,7 @@ const updateQuestionDataForExam = async (examId, questionId, number, points) =>
 {
 	let fetchResult = undefined;
 	try {
-		fetchResult = await axios.put(`http://localhost:8080/tenttikysymykset/tentti/${examId}/kysymys/${questionId}`, 
+		fetchResult = await axios.put(`/tenttikysymykset/tentti/${examId}/kysymys/${questionId}`, 
 			{number: number, points: points} , axiosConfig.getConfig());
 		return fetchResult.data;
 	}

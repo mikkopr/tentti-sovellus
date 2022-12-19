@@ -61,8 +61,6 @@ const assignmentStub = {exam_id: undefined, user_id: undefined, begin: undefined
 	available: true, completed: false, checked: false, approved: false, started: false };
 
 //const STORAGE_KEY = 'examsData';
-//const SERVER = 'http://localhost:8081';
-const SERVER = 'http://localhost:8080';
 
 const ERROR_NAME_AXIOS_ERROR = 'AxiosError';
 const ERROR_MESSAGE_TIMEOUT = 20000;
@@ -79,7 +77,6 @@ const AdminApp = () =>
     const fetchData = async () => {
       console.log("Fetching data");
       try {
-        //const result = await axios(SERVER + '/tentit', axiosConfig.getConfig());
 				const result = await examService.fetchExams();
         dispatch({type: 'DATA_RECEIVED', payload: result.data});
       }
