@@ -26,7 +26,7 @@ const QuestionList = (props) =>
 	{
 		try {
 			//Its ok to try to remove nonexisting question
-			await removeQuestionFromExam(props.exam.id, questionId);
+			await removeQuestionFromExam(props.examId, questionId);
 			props.dispatch({type: 'QUESTION_REMOVED_FROM_EXAM', payload: {examId: props.examId, questionId: questionId}});
 		}
 		catch (err) {
@@ -53,7 +53,7 @@ const QuestionList = (props) =>
 			})
 		}
 		</div>
-		<button type='button' onClick={event => handleAddQuestionClicked(props.exam.id)}>+</button>
+		<button type='button' onClick={event => handleAddQuestionClicked(props.examId)}>+</button>
 		</>
 		);	
 }

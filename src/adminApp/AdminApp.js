@@ -14,11 +14,10 @@ import ErrorMessage from '../ErrorMessage'
 import QuestionList from './QuestionList';
 import ExamList from './ExamList';
 import Assignments from '../Assignments';
-import Toolbar from './Toolbar';
 import ExamEvent from '../ExamEvent';
 
-import * as examService from '../dataFunctions/examDataFunctions'
-
+import * as examService from '../dataFunctions/examDataFunctions';
+import * as messages from '../utils/messages';
 
 const initialStateExamEvent = {
 	examId: undefined, 
@@ -54,17 +53,19 @@ const initialState =
 	showExam: false,
 	showAssignments: false,
 	showCompletedAssignment: false, //Determines if completed assignments are shown when assignments are shown
-	errorMessage: ''
+	errorMessage: '',
+	errorMessageTimeoutId: undefined
 };
 
 const assignmentStub = {exam_id: undefined, user_id: undefined, begin: undefined, answers: {answers:[]}, points: 0,
 	available: true, completed: false, checked: false, approved: false, started: false };
 
 //const STORAGE_KEY = 'examsData';
-//const SERVER = 'http://localhost:8081';
-const SERVER = 'http://localhost:8080';
 
 const ERROR_NAME_AXIOS_ERROR = 'AxiosError';
+const ERROR_MESSAGE_TIMEOUT = 20000;
+const ERROR_MESSAGE_FAILED_TO_FETCH = 'Tietojen lataus palvelimelta epäonnistui';
+const ERROR_MESSAGE_FAILED_TO_UPDATE = 'Tietojen tallennus palvelimelle epäonnistui';
 
 const AdminApp = () => 
 {
@@ -76,7 +77,6 @@ const AdminApp = () =>
     const fetchData = async () => {
       console.log("Fetching data");
       try {
-        //const result = await axios(SERVER + '/tentit', axiosConfig.getConfig());
 				const result = await examService.fetchExams();
         dispatch({type: 'DATA_RECEIVED', payload: result.data});
       }
@@ -310,8 +310,13 @@ const AdminApp = () =>
 
 	function handleExamAdded(state, payload)
 	{
-		const stateCopy = {...state, exams: [...state.exams]};
+		//TODO Should make copy of the exam in payload?
+		const stateCopy = {...state, exams: [...state.exams], examList: [...state.examList]};
 		stateCopy.exams.push(payload);
+		//If the exam list is shown, update the state.examList too
+		if (state.showExamList) {
+			stateCopy.examList.push(payload);
+		}
 		return stateCopy;
 	}
 
@@ -319,8 +324,12 @@ const AdminApp = () =>
 	{
 		const stateCopy = {...state};
 		const removedIndex = stateCopy.exams.findIndex((item) => item.id === payload.examId);
-		stateCopy.exams = stateCopy.exams.slice(0, removedIndex).concat(
-			stateCopy.exams.slice(removedIndex + 1, stateCopy.exams.length));
+		stateCopy.exams = stateCopy.exams.slice(0, removedIndex).concat(stateCopy.exams.slice(removedIndex + 1, -1));
+		//If the exam list is shown, update the state.examList too
+		if (state.showExamList) {
+			const examListIndex = stateCopy.examList.findIndex( (item) => item.id === payload.examId );
+			stateCopy.examList = stateCopy.examList.slice(0, examListIndex).concat(stateCopy.examList.slice(examListIndex + 1, -1));
+		}
 		return stateCopy;
 	}
 
@@ -328,16 +337,22 @@ const AdminApp = () =>
 	{
 		console.log('handleExamDataChanged(...)');
 		const stateCopy = {...state, exams: [...state.exams]};
-		let examIndex 
-		//If an exam is modified in the list, nothing is selected
-		if (stateCopy.selectedExamIndex > -1)
+		let examIndex;
+		//If an exam is modified in the list, nothing is selected, so have to search
+		if (stateCopy.selectedExamIndex > -1) {
 			examIndex = stateCopy.selectedExamIndex;
-		else
+		}
+		else {
 			examIndex = stateCopy.exams.findIndex( (item) => item.id == payload.id );
-		
-		stateCopy.exams[examIndex] = 
-			{...stateCopy.exams[examIndex], name: payload.name, description: payload.description,
-				begin: payload.begin, end: payload.end, available_time: payload.available_time};
+		}
+		const modifiedExam = {...stateCopy.exams[examIndex], name: payload.name, description: payload.description,
+			begin: payload.begin, end: payload.end, available_time: payload.available_time};
+		stateCopy.exams[examIndex] = modifiedExam;
+		//If the exam list is shown, update the state.examList too
+		if (state.showExamList) {
+			const examListIndex = stateCopy.examList.findIndex( (item) => item.id == payload.id );
+			stateCopy.examList[examListIndex] = modifiedExam;
+		}
 		return stateCopy;
 	}
 
@@ -377,18 +392,38 @@ const AdminApp = () =>
 		return stateCopy;
 	}
 
+	function handleOperationNotPermitted(state, payload)
+	{
+		//Start timeout for error message closing
+		clearTimeout(state.errorMessageTimeoutId);
+		const timeoutId = setTimeout(() => {
+			dispatch({type: 'HIDE_ERROR_REQUESTED'});
+		}, ERROR_MESSAGE_TIMEOUT);
+		return {...state, showError: true, errorMessage: messages.messageForResponseCode(payload.responseCode)};
+	}
+
 	function handleFailedToFetchData(state, payload)
 	{
-		const errorMessageToUser = errorMessageForError(payload);
-		alert(errorMessageToUser); //TODO remove
-		return {...state, failedToFetch: true, showError: true, errorMessage: errorMessageToUser};
+		const errorMessageToUser = ERROR_MESSAGE_FAILED_TO_FETCH + '. ' + errorMessageForError(payload);
+		//alert(errorMessageToUser); //TODO remove
+		//Start timeout for error message closing
+		clearTimeout(state.errorMessageTimeoutId);
+		const timeoutId = setTimeout(() => {
+			dispatch({type: 'HIDE_ERROR_REQUESTED'});
+		}, ERROR_MESSAGE_TIMEOUT);
+		return {...state, failedToFetch: true, showError: true, errorMessage: errorMessageToUser, errorMessageTimeoutId: timeoutId};
 	}
 
 	function handleFailedToUpdateData(state, payload)
 	{
-		const errorMessageToUser = errorMessageForError(payload);
-		alert(errorMessageToUser); //TODO remove
-		return {...state, failedToSave: true, showError: true, errorMessage: errorMessageToUser};
+		const errorMessageToUser = ERROR_MESSAGE_FAILED_TO_UPDATE + '. ' + errorMessageForError(payload);
+		//alert(errorMessageToUser); //TODO remove
+		//Start timeout for error message closing
+		clearTimeout(state.errorMessageTimeoutId);
+		const timeoutId = setTimeout(() => {
+			dispatch({type: 'HIDE_ERROR_REQUESTED'});
+		}, ERROR_MESSAGE_TIMEOUT);
+		return {...state, failedToSave: true, showError: true, errorMessage: errorMessageToUser, errorMessageTimeoutId: timeoutId};
 	}
 	
 	/**
@@ -572,10 +607,7 @@ const AdminApp = () =>
 
 			case 'OPERATION_NOT_PERMITTED':
 				console.log('OPERATION_NOT_PERMITTED');
-				
-				//TODO
-				
-				return {...state};
+				return handleOperationNotPermitted(state, action.payload);
 
       case 'FAILED_TO_FETCH_DATA':
         console.log('FAILED_TO_FETCH_DATA: ' + action.payload.message);
@@ -671,7 +703,9 @@ const AdminApp = () =>
 
 			}
 			case 'HIDE_ERROR_REQUESTED':
-				return {...state, showError: false};
+				if (state.errorMessageTimeoutId)
+					clearTimeout(state.errorMessageTimeoutId);
+				return {...state, showError: false, errorMessage: '', errorMessageTimeoutId: undefined};
 			
 			/**
 			 * Exam event
@@ -780,7 +814,7 @@ function errorMessageForError(error)
 {
 	let statusCode;
 	let responseData;
-	let errorMessageToUser = 'Tietojen tallennus epäonnistui. ';
+	let errorMessageToUser = '';
 	if (error.name === ERROR_NAME_AXIOS_ERROR) {
 		if (error.code === 'ECONNABORTED') {
 			errorMessageToUser += 'Palvelimelta ei saatu vastausta. ';

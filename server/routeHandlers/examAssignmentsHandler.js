@@ -6,21 +6,10 @@ const { DatabaseError } = require('pg');
 const {dbConnPool} = require('../db');
 const {assignUserToExam, calculateExamResults} = require('../examAssignmentFunctions');
 const {validateReqParamId, verifyToken, verifyAdminRole, userInRole} = require('../validateFunctions');
+const {resultCodes} = require('../../src/resultCodes.js');
 const roles = require('../roles');
 
 const router = express.Router();
-
-const ResultCodes = 
-{
-	dataNotFound: 1401,
-	examUnavailable: 1601,
-	examAvailableTimeEnded: 1602,
-	examNotStarted: 1603,
-	examCompleted: 1604,
-	userNotAssignedToExam: 1605,
-	assignmentToExamNotAllowed: 1606,
-	notAllowedToDeleteAssignment: 1607
-}
 
 /**
  * Handles /tenttisuoritukset
@@ -120,7 +109,7 @@ router.get('/kayttaja/:userId', verifyToken, async (req, res) =>
 		if (result.rows[0])
 		 	res.status(200).send({resultStatus: 'success', data: result.rows[0]});
 		else
-			res.status(200).send({resultStatus: 'failure', resultCode: ResultCodes.dataNotFound, message: 'Exam assignment not found'});
+			res.status(200).send({resultStatus: 'failure', resultCode: resultCodes().dataNotFound, message: 'Exam assignment not found'});
 	 }
 	 catch (err) {
 		 res.status(500).send('ERROR: Server failed to process the request');
@@ -169,12 +158,12 @@ try {
 	if (rowCount > 0)
   	res.status(200).send({resultStatus: 'success'});
 	else
-		res.status(200).send({resultStatus: 'failure', resultCode: ResultCodes.assignmentToExamNotAllowed});
+		res.status(200).send({resultStatus: 'failure', resultCode: resultCodes().assignmentToExamNotAllowed});
 }
 catch (err) {
   if (err instanceof DatabaseError) {
     if (err.code == 23503) {
-      res.status(200).send({resultStatus: 'failure', resultCode: ResultCodes.dataNotFound});
+      res.status(200).send({resultStatus: 'failure', resultCode: resultCodes().dataNotFound});
       console.log('DATA_NOT_FOUND: Unable to assign user to exam because required data does not exists. Error message: ', err.message);
 			return;
     }
@@ -236,7 +225,7 @@ router.put('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) =>
 			//voimassa AS available, suoritettu AS completed, hyvaksytty AS approved, aloitettu as started
 			//Nothing to update if the user hasn't started the exam
 			if (!data.started) {
-				res.status(200).send({resultStatus: 'failure', resultCode: ResultCodes.examNotStarted});
+				res.status(200).send({resultStatus: 'failure', resultCode: resultCodes().examNotStarted});
 				return;
 			}
 			//Query timestamp
@@ -259,23 +248,23 @@ router.put('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) =>
 			result = await dbConnPool().query(text, values);
 			const assignmentData = result.rows[0];
 			if (!assignmentData) {
-				res.status(200).send({resultStatus: 'failure', resultCode: ResultCodes.dataNotFound, message: 'Exam assignment data not found'});
+				res.status(200).send({resultStatus: 'failure', resultCode: resultCodes().dataNotFound, message: 'Exam assignment data not found'});
 				return;
 			}
 			if (!assignmentData.available) {
-				res.status(200).send({resultStatus: 'failure', resultCode: ResultCodes.examUnavailable , message: 'Exam is not available'});
+				res.status(200).send({resultStatus: 'failure', resultCode: resultCodes().examUnavailable , message: 'Exam is not available'});
 				return;
 			}
 			//Exam already completed
 			if (assignmentData.completed) {
-				res.status(200).send({resultStatus: 'failure', resultCode: ResultCodes.examCompleted, message: "Exam is completed"});
+				res.status(200).send({resultStatus: 'failure', resultCode: resultCodes().examCompleted, message: "Exam is completed"});
 				return;
 			}
 			const currentTimeMs = new Date(timestamp).getTime();
 			const examBeginTimeMs = new Date(assignmentData.exam_begin).getTime();
 			//Too early
 			if (currentTimeMs < examBeginTimeMs) {
-				res.status(200).send({resultStatus: 'failure', resultCode: ResultCodes.examUnavailable});
+				res.status(200).send({resultStatus: 'failure', resultCode: resultCodes().examUnavailable});
 				return;
 			}
 			//From now on database is updated
@@ -289,9 +278,9 @@ router.put('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) =>
 				updateData.completed = true;
 				let updateResult = await updateExamAssignment(userIdParam, examIdParam, updateData);
 				if (updateResult)
-					res.status(200).send({resultStatus: 'failure', resultCode: ResultCodes.examAvailableTimeEnded, data: updateResult, message: 'No more available time'});
+					res.status(200).send({resultStatus: 'failure', resultCode: resultCodes().examAvailableTimeEnded, data: updateResult, message: 'No more available time'});
 				else
-					res.status(200).send({resultStatus: 'failure', resultCode: ResultCodes.dataNotFound, message: 'ERROR: Failed to update assignment'});
+					res.status(200).send({resultStatus: 'failure', resultCode: resultCodes().dataNotFound, message: 'ERROR: Failed to update assignment'});
 				return;
 			}
 			//If got here the exam is ongoing and given answers are updated
@@ -319,7 +308,7 @@ router.put('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) =>
 			if (updateResult)
 				res.status(200).send({resultStatus: 'success', data: updateResult});
 			else
-				res.status(200).send({resultStatus: 'failure', resultCode: ResultCodes.dataNotFound, message: 'ERROR: Failed to update assignment'});
+				res.status(200).send({resultStatus: 'failure', resultCode: resultCodes().dataNotFound, message: 'ERROR: Failed to update assignment'});
 		}
 	}
 	catch (err) {
@@ -381,7 +370,7 @@ router.delete('/kayttaja/:userId/tentti/:examId', verifyToken, async (req, res) 
 			let values = [userIdParam, examIdParam];
 			let result = await dbConnPool().query(text, values);
 			if (result.rowCount === 0) {
-				res.status(200).send({resultStatus:'failure', resultCode: ResultCodes.notAllowedToDeleteAssignment});
+				res.status(200).send({resultStatus:'failure', resultCode: resultCodes().notAllowedToDeleteAssignment});
 				return;
 			}
 			text = `DELETE FROM tentti_suoritus WHERE kayttaja_id=$1 AND tentti_id=$2`;

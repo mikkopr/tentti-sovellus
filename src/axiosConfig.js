@@ -1,7 +1,11 @@
 
+const BASE_URL = 'http://localhost:8080/';
+const TIMEOUT = 5000;
+
 const config = {
 	headers: {Authorization: `Bearer `},
-	timeout: 1000000
+	baseURL: BASE_URL,
+	timeout: TIMEOUT
 };
 
 const getConfig = () => {
