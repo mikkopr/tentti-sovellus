@@ -313,8 +313,13 @@ const AdminApp = () =>
 
 	function handleExamAdded(state, payload)
 	{
-		const stateCopy = {...state, exams: [...state.exams]};
+		//TODO Should make copy of the exam in payload?
+		const stateCopy = {...state, exams: [...state.exams], examList: [...state.examList]};
 		stateCopy.exams.push(payload);
+		//If the exam list is shown, update the state.examList too
+		if (state.showExamList) {
+			stateCopy.examList.push(payload);
+		}
 		return stateCopy;
 	}
 
@@ -322,8 +327,12 @@ const AdminApp = () =>
 	{
 		const stateCopy = {...state};
 		const removedIndex = stateCopy.exams.findIndex((item) => item.id === payload.examId);
-		stateCopy.exams = stateCopy.exams.slice(0, removedIndex).concat(
-			stateCopy.exams.slice(removedIndex + 1, stateCopy.exams.length));
+		stateCopy.exams = stateCopy.exams.slice(0, removedIndex).concat(stateCopy.exams.slice(removedIndex + 1, -1));
+		//If the exam list is shown, update the state.examList too
+		if (state.showExamList) {
+			const examListIndex = stateCopy.examList.findIndex( (item) => item.id === payload.examId );
+			stateCopy.examList = stateCopy.examList.slice(0, examListIndex).concat(stateCopy.examList.slice(examListIndex + 1, -1));
+		}
 		return stateCopy;
 	}
 
@@ -331,16 +340,22 @@ const AdminApp = () =>
 	{
 		console.log('handleExamDataChanged(...)');
 		const stateCopy = {...state, exams: [...state.exams]};
-		let examIndex 
-		//If an exam is modified in the list, nothing is selected
-		if (stateCopy.selectedExamIndex > -1)
+		let examIndex;
+		//If an exam is modified in the list, nothing is selected, so have to search
+		if (stateCopy.selectedExamIndex > -1) {
 			examIndex = stateCopy.selectedExamIndex;
-		else
+		}
+		else {
 			examIndex = stateCopy.exams.findIndex( (item) => item.id == payload.id );
-		
-		stateCopy.exams[examIndex] = 
-			{...stateCopy.exams[examIndex], name: payload.name, description: payload.description,
-				begin: payload.begin, end: payload.end, available_time: payload.available_time};
+		}
+		const modifiedExam = {...stateCopy.exams[examIndex], name: payload.name, description: payload.description,
+			begin: payload.begin, end: payload.end, available_time: payload.available_time};
+		stateCopy.exams[examIndex] = modifiedExam;
+		//If the exam list is shown, update the state.examList too
+		if (state.showExamList) {
+			const examListIndex = stateCopy.examList.findIndex( (item) => item.id == payload.id );
+			stateCopy.examList[examListIndex] = modifiedExam;
+		}
 		return stateCopy;
 	}
 
